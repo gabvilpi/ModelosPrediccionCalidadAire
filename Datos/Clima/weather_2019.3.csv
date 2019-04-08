@@ -1,0 +1,4 @@
+,altitud,dir,fecha,horaPresMax,horaPresMin,horaracha,horatmax,horatmin,indicativo,nombre,prec,presMax,presMin,provincia,racha,tmax,tmed,tmin,velmedia
+0,667,6,2019-03-01,0,17,01:20,16:20,06:50,3195,"MADRID, RETIRO","0,0","946,8","944,1",MADRID,"7,2","19,5","13,2","6,8","1,7"
+1,667,16,2019-03-02,11,Varias,13:30,16:10,06:10,3195,"MADRID, RETIRO","0,0","948,5","946,0",MADRID,"5,8","19,7","13,8","8,0","1,9"
+2,667,24,2019-03-03,9,Varias,16:30,13:50,06:50,3195,"MADRID, RETIRO","0,0","946,5","941,6",MADRID,"10,3","20,2","13,2","6,1","1,9"

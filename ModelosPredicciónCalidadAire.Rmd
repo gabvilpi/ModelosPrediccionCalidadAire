@@ -1,0 +1,277 @@
+---
+title: "Predicción de la calidad del aire de Madrid mediante modelos supervisados"
+subtitle: "
+Máster universitario en Ciencia de Datos (Data Science)
+Minería de datos y Machine Learning"
+author: "Gabriel Villalba Pintado"
+date: "`r format(Sys.Date(), '%d de %B de %Y')`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 4
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Predicción de la calidad del aire de Madrid mediante modelos supervisados
+
+## 1. Comprensión de los datos
+
+### 1.1. Carga de datos
+
+#### 1.1.1. Calidad del aire
+
+A continuación se realiza la carga recursiva de los datos de calidad del aire en el periodo 2013-2018. Los ficheros fuente contienen los datos en texto plano con los campos delimitados por un ancho determinado. Las medidas no válidas se inican como "00.00N" y las válidas tienen una letra "V"" después de la medición. Se unificarán los campos "año", "mes" y "dia" en un único campo "fecha". Los datos consolidados se almacenarán en un fichero de texto plano delimitado por comas (CSV).
+
+```{r carga_contaminacion, warning=FALSE, message=FALSE}
+# Path datos contaminación "Datos/Contaminación"
+setwd("Datos/Contaminación")
+
+# Listamos los ficheros a cargar
+# ficheros <- list.files(pattern = ".*.txt")
+# ficheros <- list.files(pattern = "ene_mo01.txt")
+# ficheros <- list.files(pattern = "oct_mo17")
+ficheros <- list.files(pattern = ".*mo1[3-8].txt")
+
+
+# Determinamos el ancho de cada campo
+anchos <- c(8,2,2,2,2,2,2,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6,6)
+
+# Determinamos el nombre de las columnas
+columnas <- c("estacion","contaminante","tecnica","periodo","anyo","mes","dia","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24")
+
+# Cargamos los datos en un DataFrame. Las medidas no válidas ("00.00N") se sobreescriben con "NA"
+for (fichero in ficheros){
+  
+  # Si el DataSet existe, creamos un DataSet auxiliar para unir los datos
+  if (exists("calidadAire")){
+    temp_dataset <- read.fwf(file = fichero, widths = anchos, header = FALSE, col.names = columnas, na.strings = c("00.00N"))
+    calidadAire <- rbind(calidadAire, temp_dataset)
+    rm(temp_dataset)
+  }
+       
+  # Si el DataSet no existe, lo creamos
+  if (!exists("calidadAire")){
+    calidadAire <- read.fwf(file = fichero, widths = anchos, header = FALSE, col.names = columnas, na.strings = c("00.00N"))
+  }
+ 
+}
+
+# Unimos las columnas año, mes y dia en una única columna fecha
+calidadAire<-transform(calidadAire, anyo=paste(anyo, mes, dia, sep="/"))
+colnames(calidadAire)[5]<-"fecha"
+calidadAire<-calidadAire[,!names(calidadAire) %in% c("mes", "dia")]
+
+# Eliminamos la V de los valores válidos de cada medición horaria
+for (i in 6:29) {
+  calidadAire[,i]<-gsub("V","",calidadAire[,i])
+}
+
+# Corregimos el tipo de dato de cada columna
+calidadAire<-transform(calidadAire, estacion=as.factor(estacion), contaminante=as.factor(contaminante), tecnica=as.factor(tecnica), periodo=as.factor(periodo), fecha=as.Date(fecha, format("%y/%m/%d")), hora1=as.numeric(hora1), hora2=as.numeric(hora2), hora3=as.numeric(hora3), hora4=as.numeric(hora4), hora5=as.numeric(hora5), hora6=as.numeric(hora6), hora7=as.numeric(hora7), hora8=as.numeric(hora8), hora9=as.numeric(hora9), hora10=as.numeric(hora10), hora11=as.numeric(hora11), hora12=as.numeric(hora12), hora13=as.numeric(hora13), hora14=as.numeric(hora14), hora15=as.numeric(hora15), hora16=as.numeric(hora16), hora17=as.numeric(hora17), hora18=as.numeric(hora18), hora19=as.numeric(hora19), hora20=as.numeric(hora20), hora21=as.numeric(hora21), hora22=as.numeric(hora22), hora23=as.numeric(hora23), hora24=as.numeric(hora24))
+
+# Ordenamos el data frame por fecha, estación y contaminante
+calidadAire<-calidadAire[order(calidadAire$fecha, calidadAire$estacion, calidadAire$contaminante),]
+
+# Guardamos los datos
+write.csv(calidadAire, file = "calidadAire.csv", row.names = FALSE)
+
+```
+
+#### 1.1.2. Meteorología
+
+En el siguiente trozo de código se procede a realizar la carga recursiva de los ficheros de meteorología. Los ficheros contienen los datos en texto plano con los diferentes campos separados por comas (CSV). Se procederá a eliminar el número de fila y a modificar el nivel de precipitación "Ip" (inapreciable ó <0.01) por el valor 0.05. Los datos consolidados se almacenarán en un fichero CSV.
+
+```{r carga_meteorologia, warning=FALSE, message=FALSE}
+# Path datos meteorología "Datos/Clima"
+setwd("Datos/Clima")
+
+# Listamos los ficheros a cargar
+ficheros <- list.files(pattern = "weather.*.csv")
+
+# Determinamos el nombre de las columnas
+columnas <- c("id","altitud","dir","fecha","horaPresMax","horaPresMin","horaRacha","horaTmax","horaTmin","indicativo","nombre","prec","presMax","presMin","provincia","racha","tmax","tmed","tmin","velMedia")
+
+# Determinamos el tipo de dato de cada columna en la lectura del fichero
+colClasses = c("character","character","character","Date","character","character","character","character","character","character","character","character","character","character","character","character","character","character","character","character")
+
+# Cargamos los datos en un DataFrame
+for (fichero in ficheros){
+  
+  # Si el DataSet existe, creamos un DataSet auxiliar para unir los datos
+  if (exists("clima")){
+    temp_dataset <- read.csv(file = fichero, header = TRUE, sep = ",", col.names = columnas, colClasses = colClasses, na.strings = c(""))
+    clima <- rbind(clima, temp_dataset)
+    rm(temp_dataset)
+  }
+       
+  # Si el DataSet no existe, lo creamos
+  if (!exists("clima")){
+    clima <- read.csv(file = fichero, header = TRUE, sep = ",", col.names = columnas, colClasses = colClasses, na.strings = c(""))
+  }
+ 
+}
+
+# Eliminamos del data frame el indicador de fila
+clima <- clima[2:20]
+
+# Sustituimos la medida de precipitación inapreciable (Ip < 0.1) por el valor de 0.05
+clima$prec <- gsub("Ip", "0.05", clima$prec)
+
+# Corregimos el tipo de dato de cada columna
+clima <- transform(clima, altitud = as.integer(altitud), dir = as.integer(dir), indicativo = as.factor(indicativo), nombre = as.factor(nombre), prec = as.numeric(sub(",", ".", prec)), presMax = as.numeric(sub(",", ".", presMax)), presMin = as.numeric(sub(",", ".", presMin)), provincia = as.factor(provincia), racha = as.numeric(sub(",", ".", racha)), tmax = as.numeric(sub(",", ".", tmax)), tmed = as.numeric(sub(",", ".", tmed)), tmin = as.numeric(sub(",", ".", tmin)), velMedia = as.numeric(sub(",", ".", velMedia)))
+
+# Guardamos los datos
+write.csv(clima, file = "clima.csv", row.names = FALSE)
+
+```
+
+#### 1.1.3. Calendario laboral
+
+Por último, se realiza la carga del calendario laboral. Se trata de un fichero en texto plano con los campos separados por punto y coma (CSV). Se procederá a normalizar los campos diaSemana y tipoFestivo. Los datos cargados y normalizados se almacenarán en un fichero CSV.
+
+```{r carga_calendario, warning=FALSE, message=FALSE}
+# Path datos meteorología "Datos/Clima"
+setwd("Datos/Calendario")
+
+# Listamos los ficheros a cargar
+ficheros <- list.files(pattern = "Calendario.*.csv")
+
+# Determinamos el nombre de las columnas
+columnas <- c("fecha","diaSemana","tipoDia","tipoFestivo","festividad")
+
+# Cargamos los datos en un DataFrame
+for (fichero in ficheros){
+  
+  # Si el DataSet existe, creamos un DataSet auxiliar para unir los datos
+  if (exists("calendario")){
+    temp_dataset <- read.csv(file = fichero, header = TRUE, sep = ";", col.names = columnas)
+    calendario <- rbind(clima, temp_dataset)
+    rm(temp_dataset)
+  }
+       
+  # Si el DataSet no existe, lo creamos
+  if (!exists("calendario")){
+    calendario <- read.csv(file = fichero, header = TRUE, sep = ";", col.names = columnas)
+  }
+ 
+}
+
+# Corregimos el tipo de dato de la columna dia
+calendario<-transform(calendario, fecha=as.Date(fecha, format("%d/%m/%Y")))
+
+# Corregimos los niveles de algúnos de los factores
+levels(calendario$diaSemana)<-gsub("miercoles", "miércoles", levels(calendario$diaSemana))
+levels(calendario$diaSemana)<-gsub("sabado", "sábado", levels(calendario$diaSemana))
+levels(calendario$tipoFestivo)<-gsub("Festivo de la comunidad de Madrid", "Festivo de la Comunidad de Madrid", levels(calendario$tipoFestivo))
+
+# Corregimos los niveles vacíos por "laborables"
+levels(calendario$tipoDia)<-c("laborable", "domingo", "festivo", "laborable", "sabado")
+
+# Guardamos los datos
+write.csv(calendario, file = "calendario.csv", row.names = FALSE)
+
+```
+
+### 1.2. Exploración de los datos
+
+#### 1.2.1. Calidad del aire
+
+```{r exploracion_calidadAire, warning=FALSE, message=FALSE}
+
+contaminante = c("Dióxido de Azufre","Monóxido de Carbono","Monóxido de Nitrógeno","Dióxido de Nitrógeno","Partículas PM2.5","Partículas PM10","Óxidos de Nitrógeno","Ozono","Tolueno","Benceno","Etilbenceno","Hidrocarburos totales
+(hexano)","Metano","Hidrocarburos
+no metánicos (hexano)")
+
+j=1
+
+# Boxplot dióxido de nitrógeno NO2
+for (i in levels(calidadAire$contaminante)){
+  boxplot(calidadAire[calidadAire$contaminante==i,6:29], main=contaminante[j], outline = FALSE)
+  j=j+1
+}
+
+```
+
+#### 1.2.2. Meteorología
+
+```{r exploracion_clima, warning=FALSE, message=FALSE}
+# str()
+str(clima)
+
+# summary()
+summary(clima)
+
+# Gráficos
+library(ggplot2)
+
+# Precipitaciones
+ggplot(data = clima, aes(fecha, prec)) + geom_line() + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Precipitaciones en 2018 (mm)")
+
+# Presión atmosférica
+ggplot(data = clima, aes(fecha)) + geom_line(aes(y = presMax, colour = "presMax")) + geom_line(aes(y = presMin, colour = "presMin")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Presión max y min en 2018 (hPa)")
+
+# Temperatura
+ggplot(data = clima, aes(fecha)) + geom_line(aes(y = tmax, colour = "tmax")) + geom_line(aes(y = tmed, colour = "tmed")) + geom_line(aes(y = tmin, colour = "tmin")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Temperatura máxima, media y mínima en 2018 (ºC)")
+
+# Viento
+ggplot(data = clima, aes(fecha)) + geom_line(aes(y = racha, colour = "racha")) + geom_line(aes(y = velMedia, colour = "velMedia")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Velocidad máxima y media del viento en 2018 (m/s)")
+
+```
+
+#### 1.2.3. Calendario laboral
+
+```{r exploracion_calendario, warning=FALSE, message=FALSE}
+# str()
+str(calendario)
+
+# summary()
+summary(calendario)
+
+```
+
+### 1.3. Preparación de los datos
+
+#### 1.3.1. Seleccionar e integrar los datos
+
+A continuación se seleccionan los datos deseados para constuir el modelo de predicción de la calidad del aire. Los datos seleccionados se integraran en un nuevo data frame uniendo todos los datos de una misma fecha. 
+
+Del data frame "calidadAire" se seleccionarán los datos correspondientes a la fecha de la medida, la estación, el contaminante medido y las 24 medidas horarias. Del data frame "clima" se seleccionará la fecha y los datos de medidas de precipitación, presión máxima y mínima, temperatura máxima, mínima y media, y velocidad media y máxima del viento. Por último, del data frame "calendario" se seleccionará la fecha y si ese dia es fesitivo o no.
+
+```{r seleccionar_integrar, warning=FALSE, message=FALSE}
+
+# Seleccionamos los datos del data frame calidadAire y creamos un data frame nuevo
+datos <- calidadAire[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24")]
+
+# Uniremos los data frames como data.table
+require(data.table)
+setDT(datos)
+setDT(calendario)
+setDT(clima)
+
+# Unimos los datos seleccionados del data frame clima según la fecha de las mediciones
+datos<-datos[clima[,c("fecha","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia")], on = "fecha"]
+
+# Unimos los datos seleccionados del data frame calendario según la fecha de las mediciones
+datos<-datos[calendario[,c("fecha","tipoDia")], on = "fecha"]
+
+```
+
+Una vez integrados los datos en el data frame "datos" se realizarán las siguientes transformaciones:
+
+- Sustituimos el campo festivo por laborable y lo codificamos como 0|1 (festivo = 0, sabado = 0, domingo = 1, laborable = 1)
+- Normalización de todas las medidas en un rango [0-1]
+
+```{r transformación_normalizacion, warning=FALSE, message=FALSE}
+
+# Sustituimos el campo festivo por laborable
+colnames(datos)[36]<-"laborable"
+
+# Codificamos el campo laborable
+levels(datos$laborable)<-c(1,0,0,0)
+
+```
+

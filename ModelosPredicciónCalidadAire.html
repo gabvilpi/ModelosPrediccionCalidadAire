@@ -187,7 +187,7 @@ $(document).ready(function () {
 <h1 class="title toc-ignore">Predicción de la calidad del aire de Madrid mediante modelos supervisados</h1>
 <h3 class="subtitle"><em>Máster universitario en Ciencia de Datos (Data Science) Minería de datos y Machine Learning</em></h3>
 <h4 class="author"><em>Gabriel Villalba Pintado</em></h4>
-<h4 class="date"><em>05 de abril de 2019</em></h4>
+<h4 class="date"><em>08 de abril de 2019</em></h4>
 
 </div>
 
@@ -325,7 +325,7 @@ setwd(&quot;Datos/Calendario&quot;)
 ficheros &lt;- list.files(pattern = &quot;Calendario.*.csv&quot;)
 
 # Determinamos el nombre de las columnas
-columnas &lt;- c(&quot;dia&quot;,&quot;diaSemana&quot;,&quot;tipoDia&quot;,&quot;tipoFestivo&quot;,&quot;festividad&quot;)
+columnas &lt;- c(&quot;fecha&quot;,&quot;diaSemana&quot;,&quot;tipoDia&quot;,&quot;tipoFestivo&quot;,&quot;festividad&quot;)
 
 # Cargamos los datos en un DataFrame
 for (fichero in ficheros){
@@ -345,12 +345,15 @@ for (fichero in ficheros){
 }
 
 # Corregimos el tipo de dato de la columna dia
-calendario&lt;-transform(calendario, dia=as.Date(dia, format(&quot;%d/%m/%Y&quot;)))
+calendario&lt;-transform(calendario, fecha=as.Date(fecha, format(&quot;%d/%m/%Y&quot;)))
 
 # Corregimos los niveles de algúnos de los factores
 levels(calendario$diaSemana)&lt;-gsub(&quot;miercoles&quot;, &quot;miércoles&quot;, levels(calendario$diaSemana))
 levels(calendario$diaSemana)&lt;-gsub(&quot;sabado&quot;, &quot;sábado&quot;, levels(calendario$diaSemana))
 levels(calendario$tipoFestivo)&lt;-gsub(&quot;Festivo de la comunidad de Madrid&quot;, &quot;Festivo de la Comunidad de Madrid&quot;, levels(calendario$tipoFestivo))
+
+# Corregimos los niveles vacíos por &quot;laborables&quot;
+levels(calendario$tipoDia)&lt;-c(&quot;laborable&quot;, &quot;domingo&quot;, &quot;festivo&quot;, &quot;laborable&quot;, &quot;sabado&quot;)
 
 # Guardamos los datos
 write.csv(calendario, file = &quot;calendario.csv&quot;, row.names = FALSE)</code></pre>
@@ -460,19 +463,19 @@ ggplot(data = clima, aes(fecha)) + geom_line(aes(y = racha, colour = &quot;racha
 <pre class="r"><code># str()
 str(calendario)</code></pre>
 <pre><code>## 'data.frame':    2555 obs. of  5 variables:
-##  $ dia        : Date, format: &quot;2013-01-01&quot; &quot;2013-01-02&quot; ...
+##  $ fecha      : Date, format: &quot;2013-01-01&quot; &quot;2013-01-02&quot; ...
 ##  $ diaSemana  : Factor w/ 7 levels &quot;domingo&quot;,&quot;jueves&quot;,..: 4 5 2 7 6 1 3 4 5 2 ...
-##  $ tipoDia    : Factor w/ 5 levels &quot;&quot;,&quot;domingo&quot;,&quot;festivo&quot;,..: 3 4 4 4 5 2 3 4 4 4 ...
+##  $ tipoDia    : Factor w/ 4 levels &quot;laborable&quot;,&quot;domingo&quot;,..: 3 1 1 1 4 2 3 1 1 1 ...
 ##  $ tipoFestivo: Factor w/ 4 levels &quot;&quot;,&quot;Festivo de la Comunidad de Madrid&quot;,..: 4 1 1 1 1 1 4 1 1 1 ...
 ##  $ festividad : Factor w/ 28 levels &quot;&quot;,&quot;Año Nuevo&quot;,..: 2 1 1 1 1 1 23 1 1 1 ...</code></pre>
 <pre class="r"><code># summary()
 summary(calendario)</code></pre>
-<pre><code>##       dia                 diaSemana        tipoDia    
-##  Min.   :2013-01-01   domingo  :365            : 346  
-##  1st Qu.:2014-10-01   jueves   :365   domingo  : 308  
+<pre><code>##      fecha                diaSemana        tipoDia    
+##  Min.   :2013-01-01   domingo  :365   laborable:1738  
+##  1st Qu.:2014-10-01   jueves   :365   domingo  : 359  
 ##  Median :2016-07-02   lunes    :364   festivo  : 103  
-##  Mean   :2016-07-01   martes   :366   laborable:1492  
-##  3rd Qu.:2018-04-01   miércoles:365   sabado   : 306  
+##  Mean   :2016-07-01   martes   :366   sabado   : 355  
+##  3rd Qu.:2018-04-01   miércoles:365                   
 ##  Max.   :2019-12-31   sábado   :365                   
 ##                       viernes  :365                   
 ##                                tipoFestivo  

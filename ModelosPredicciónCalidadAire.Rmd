@@ -90,7 +90,7 @@ En el siguiente trozo de código se procede a realizar la carga recursiva de los 
 setwd("Datos/Clima")
 
 # Listamos los ficheros a cargar
-ficheros <- list.files(pattern = "weather.*.csv")
+ficheros <- list.files(pattern = "weather_201[3-8].*.csv")
 
 # Determinamos el nombre de las columnas
 columnas <- c("id","altitud","dir","fecha","horaPresMax","horaPresMin","horaRacha","horaTmax","horaTmin","indicativo","nombre","prec","presMax","presMin","provincia","racha","tmax","tmed","tmin","velMedia")
@@ -256,14 +256,13 @@ setDT(clima)
 datos<-datos[clima[,c("fecha","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia")], on = "fecha"]
 
 # Unimos los datos seleccionados del data frame calendario según la fecha de las mediciones
-datos<-datos[calendario[,c("fecha","tipoDia")], on = "fecha"]
+datos<-datos[calendario[calendario$fecha<'2019-01-01',c("fecha","tipoDia")], on = "fecha"]
 
 ```
 
 Una vez integrados los datos en el data frame "datos" se realizarán las siguientes transformaciones:
 
 - Sustituimos el campo festivo por laborable y lo codificamos como 0|1 (festivo = 0, sabado = 0, domingo = 1, laborable = 1)
-- Normalización de todas las medidas en un rango [0-1]
 
 ```{r transformación_normalizacion, warning=FALSE, message=FALSE}
 
@@ -274,4 +273,42 @@ colnames(datos)[36]<-"laborable"
 levels(datos$laborable)<-c(1,0,0,0)
 
 ```
+
+- Imputamos a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
+
+```{r imputación_valores, warning=FALSE, message=FALSE}
+
+for (i in levels(datos$contaminante)) {
+  for (j in levels(datos$estacion)) {
+    datos$hora1[is.na(datos$hora1) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora1[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora2[is.na(datos$hora2) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora2[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora3[is.na(datos$hora3) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora3[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora4[is.na(datos$hora4) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora4[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora5[is.na(datos$hora5) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora5[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora6[is.na(datos$hora6) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora6[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora7[is.na(datos$hora7) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora7[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora8[is.na(datos$hora8) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora8[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora9[is.na(datos$hora9) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora9[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora10[is.na(datos$hora10) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora10[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora11[is.na(datos$hora11) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora11[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora12[is.na(datos$hora12) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora12[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora13[is.na(datos$hora13) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora13[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora14[is.na(datos$hora14) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora14[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora15[is.na(datos$hora15) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora15[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora16[is.na(datos$hora16) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora16[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora17[is.na(datos$hora17) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora17[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora18[is.na(datos$hora18) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora18[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora19[is.na(datos$hora19) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora19[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora20[is.na(datos$hora20) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora20[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora21[is.na(datos$hora21) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora21[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora22[is.na(datos$hora22) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora22[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora23[is.na(datos$hora23) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora23[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+    datos$hora24[is.na(datos$hora24) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora24[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
+  }
+}
+
+```
+
+- Normalizamos todas las medidas en un rango [0-1]
+
 

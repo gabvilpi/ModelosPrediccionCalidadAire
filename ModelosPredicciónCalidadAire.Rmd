@@ -31,9 +31,6 @@ A continuación se realiza la carga recursiva de los datos de calidad del aire en
 setwd("Datos/Contaminación")
 
 # Listamos los ficheros a cargar
-# ficheros <- list.files(pattern = ".*.txt")
-# ficheros <- list.files(pattern = "ene_mo01.txt")
-# ficheros <- list.files(pattern = "oct_mo17")
 ficheros <- list.files(pattern = ".*mo1[3-8].txt")
 
 
@@ -71,10 +68,14 @@ for (i in 6:29) {
 }
 
 # Corregimos el tipo de dato de cada columna
-calidadAire<-transform(calidadAire, estacion=as.factor(estacion), contaminante=as.factor(contaminante), tecnica=as.factor(tecnica), periodo=as.factor(periodo), fecha=as.Date(fecha, format("%y/%m/%d")), hora1=as.numeric(hora1), hora2=as.numeric(hora2), hora3=as.numeric(hora3), hora4=as.numeric(hora4), hora5=as.numeric(hora5), hora6=as.numeric(hora6), hora7=as.numeric(hora7), hora8=as.numeric(hora8), hora9=as.numeric(hora9), hora10=as.numeric(hora10), hora11=as.numeric(hora11), hora12=as.numeric(hora12), hora13=as.numeric(hora13), hora14=as.numeric(hora14), hora15=as.numeric(hora15), hora16=as.numeric(hora16), hora17=as.numeric(hora17), hora18=as.numeric(hora18), hora19=as.numeric(hora19), hora20=as.numeric(hora20), hora21=as.numeric(hora21), hora22=as.numeric(hora22), hora23=as.numeric(hora23), hora24=as.numeric(hora24))
+# calidadAire<-transform(calidadAire, estacion=as.factor(estacion), contaminante=as.factor(contaminante), tecnica=as.factor(tecnica), periodo=as.factor(periodo), fecha=as.Date(fecha, format("%y/%m/%d")), hora1=as.numeric(hora1), hora2=as.numeric(hora2), hora3=as.numeric(hora3), hora4=as.numeric(hora4), hora5=as.numeric(hora5), hora6=as.numeric(hora6), hora7=as.numeric(hora7), hora8=as.numeric(hora8), hora9=as.numeric(hora9), hora10=as.numeric(hora10), hora11=as.numeric(hora11), hora12=as.numeric(hora12), hora13=as.numeric(hora13), hora14=as.numeric(hora14), hora15=as.numeric(hora15), hora16=as.numeric(hora16), hora17=as.numeric(hora17), hora18=as.numeric(hora18), hora19=as.numeric(hora19), hora20=as.numeric(hora20), hora21=as.numeric(hora21), hora22=as.numeric(hora22), hora23=as.numeric(hora23), hora24=as.numeric(hora24))
+
+# Corregimos el tipo de dato de cada columna
+calidadAire <- transform(calidadAire, estacion=as.factor(estacion), contaminante=as.factor(contaminante), tecnica=as.factor(tecnica), periodo=as.factor(periodo), fecha=as.Date(fecha, format("%y/%m/%d")))
+calidadAire[,6:29] <- sapply(calidadAire[,6:29], as.numeric)
 
 # Ordenamos el data frame por fecha, estación y contaminante
-calidadAire<-calidadAire[order(calidadAire$fecha, calidadAire$estacion, calidadAire$contaminante),]
+calidadAire <- calidadAire[order(calidadAire$fecha, calidadAire$estacion, calidadAire$contaminante),]
 
 # Guardamos los datos
 write.csv(calidadAire, file = "calidadAire.csv", row.names = FALSE)
@@ -188,7 +189,7 @@ no metánicos (hexano)")
 
 j=1
 
-# Boxplot dióxido de nitrógeno NO2
+# Boxplot mediciones de calidadAire
 for (i in levels(calidadAire$contaminante)){
   boxplot(calidadAire[calidadAire$contaminante==i,6:29], main=contaminante[j], outline = FALSE)
   j=j+1
@@ -237,7 +238,7 @@ summary(calendario)
 
 #### 1.3.1. Seleccionar e integrar los datos
 
-A continuación se seleccionan los datos deseados para constuir el modelo de predicción de la calidad del aire. Los datos seleccionados se integraran en un nuevo data frame uniendo todos los datos de una misma fecha. 
+A continuación se seleccionan los datos deseados para constuir el modelo de predicción de la calidad del aire. Los datos seleccionados se integrarán en un nuevo data frame uniendo todos los datos de una misma fecha. 
 
 Del data frame "calidadAire" se seleccionarán los datos correspondientes a la fecha de la medida, la estación, el contaminante medido y las 24 medidas horarias. Del data frame "clima" se seleccionará la fecha y los datos de medidas de precipitación, presión máxima y mínima, temperatura máxima, mínima y media, y velocidad media y máxima del viento. Por último, del data frame "calendario" se seleccionará la fecha y si ese dia es fesitivo o no.
 
@@ -246,11 +247,9 @@ Del data frame "calidadAire" se seleccionarán los datos correspondientes a la fe
 # Seleccionamos los datos del data frame calidadAire y creamos un data frame nuevo
 datos <- calidadAire[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24")]
 
-# Uniremos los data frames como data.table
+# Uniremos los data frames como data table
 require(data.table)
 setDT(datos)
-setDT(calendario)
-setDT(clima)
 
 # Unimos los datos seleccionados del data frame clima según la fecha de las mediciones
 datos<-datos[clima[,c("fecha","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia")], on = "fecha"]
@@ -258,15 +257,18 @@ datos<-datos[clima[,c("fecha","prec","presMax","presMin","tmax","tmed","tmin","r
 # Unimos los datos seleccionados del data frame calendario según la fecha de las mediciones
 datos<-datos[calendario[calendario$fecha<'2019-01-01',c("fecha","tipoDia")], on = "fecha"]
 
+# Reconvertimos la data table en data frame
+datos<-as.data.frame(datos)
+
 ```
 
 Una vez integrados los datos en el data frame "datos" se realizarán las siguientes transformaciones:
 
-- Sustituimos el campo festivo por laborable y lo codificamos como 0|1 (festivo = 0, sabado = 0, domingo = 1, laborable = 1)
+- Se sustituye el nombre del campo "festivo" por "laborable" y lo codificamos como 0|1 (festivo = 0, sabado = 0, domingo = 1, laborable = 1)
 
-```{r transformación_normalizacion, warning=FALSE, message=FALSE}
+```{r codificación_laborable, warning=FALSE, message=FALSE}
 
-# Sustituimos el campo festivo por laborable
+# Sustituimos el nombre del campo "festivo" por "laborable"
 colnames(datos)[36]<-"laborable"
 
 # Codificamos el campo laborable
@@ -274,47 +276,9 @@ levels(datos$laborable)<-c(1,0,0,0)
 
 ```
 
-- Imputamos a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
-
-```{r imputación_valores, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
-
-for (i in levels(datos$contaminante)) {
-  for (j in levels(datos$estacion)) {
-    datos$hora1[is.na(datos$hora1) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora1[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora2[is.na(datos$hora2) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora2[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora3[is.na(datos$hora3) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora3[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora4[is.na(datos$hora4) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora4[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora5[is.na(datos$hora5) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora5[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora6[is.na(datos$hora6) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora6[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora7[is.na(datos$hora7) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora7[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora8[is.na(datos$hora8) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora8[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora9[is.na(datos$hora9) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora9[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora10[is.na(datos$hora10) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora10[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora11[is.na(datos$hora11) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora11[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora12[is.na(datos$hora12) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora12[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora13[is.na(datos$hora13) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora13[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora14[is.na(datos$hora14) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora14[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora15[is.na(datos$hora15) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora15[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora16[is.na(datos$hora16) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora16[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora17[is.na(datos$hora17) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora17[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora18[is.na(datos$hora18) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora18[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora19[is.na(datos$hora19) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora19[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora20[is.na(datos$hora20) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora20[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora21[is.na(datos$hora21) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora21[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora22[is.na(datos$hora22) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora22[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora23[is.na(datos$hora23) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora23[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-    datos$hora24[is.na(datos$hora24) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora24[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
-  }
-}
-
-# Guardamos los datos
-write.csv(datos, file = "datos.csv", row.names = FALSE)
-
-```
+- Se imputa a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
 
 ```{r imputación_valores2, message=FALSE, warning=FALSE}
-
-datos<-as.data.frame(datos)
 
 for (i in levels(datos$contaminante)) {
   for (j in levels(datos$estacion)) {
@@ -323,6 +287,7 @@ for (i in levels(datos$contaminante)) {
       if (nrow(datos[temp & datos$contaminante==i & datos$estacion==j,][k]) != 0) {
         datos[temp & datos$contaminante==i & datos$estacion==j,][k] <- mean(datos[[k]], na.rm = TRUE)
       }
+      rm(temp)
     }
   }
 }
@@ -332,6 +297,37 @@ write.csv(datos, file = "datos.csv", row.names = FALSE)
 
 ```
 
-- Normalizamos todas las medidas en un rango [0-1]
+Realizamos una nueva exploración de los datos una vez imputado a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
+
+```{r exploración_datos, message=FALSE, warning=FALSE}
+j=1
+
+# Boxplot datos contaminación
+for (i in levels(datos$contaminante)){
+  boxplot(datos[datos$contaminante==i,4:27], main=contaminante[j], outline = FALSE)
+  j=j+1
+}
+
+# Gráficos
+library(ggplot2)
+
+# Precipitaciones
+ggplot(data = datos, aes(fecha, prec)) + geom_line() + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Precipitaciones en 2018 (mm)")
+
+# Presión atmosférica
+ggplot(data = datos, aes(fecha)) + geom_line(aes(y = presMax, colour = "presMax")) + geom_line(aes(y = presMin, colour = "presMin")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Presión max y min en 2018 (hPa)")
+
+# Temperatura
+ggplot(data = datos, aes(fecha)) + geom_line(aes(y = tmax, colour = "tmax")) + geom_line(aes(y = tmed, colour = "tmed")) + geom_line(aes(y = tmin, colour = "tmin")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Temperatura máxima, media y mínima en 2018 (ºC)")
+
+# Viento
+ggplot(data = datos, aes(fecha)) + geom_line(aes(y = racha, colour = "racha")) + geom_line(aes(y = velMedia, colour = "velMedia")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Velocidad máxima y media del viento en 2018 (m/s)")
+```
+
+- Se normalizan todas las medidas en un rango [0-1]
+
+```{r normalización, message=FALSE, warning=FALSE}
 
 
+
+```

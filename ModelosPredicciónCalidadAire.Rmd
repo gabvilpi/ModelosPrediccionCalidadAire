@@ -276,7 +276,7 @@ levels(datos$laborable)<-c(1,0,0,0)
 
 - Imputamos a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
 
-```{r imputación_valores, warning=FALSE, message=FALSE}
+```{r imputación_valores, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
 for (i in levels(datos$contaminante)) {
   for (j in levels(datos$estacion)) {
@@ -306,6 +306,29 @@ for (i in levels(datos$contaminante)) {
     datos$hora24[is.na(datos$hora24) & datos$contaminante==i & datos$estacion==j] <- mean(datos$hora24[datos$contaminante==i & datos$estacion==j], na.rm = TRUE)
   }
 }
+
+# Guardamos los datos
+write.csv(datos, file = "datos.csv", row.names = FALSE)
+
+```
+
+```{r imputación_valores2, message=FALSE, warning=FALSE}
+
+datos<-as.data.frame(datos)
+
+for (i in levels(datos$contaminante)) {
+  for (j in levels(datos$estacion)) {
+    for (k in colnames(datos)[4:35]) {
+      temp<-is.na(datos[[k]])
+      if (nrow(datos[temp & datos$contaminante==i & datos$estacion==j,][k]) != 0) {
+        datos[temp & datos$contaminante==i & datos$estacion==j,][k] <- mean(datos[[k]], na.rm = TRUE)
+      }
+    }
+  }
+}
+
+# Guardamos los datos
+write.csv(datos, file = "datos.csv", row.names = FALSE)
 
 ```
 

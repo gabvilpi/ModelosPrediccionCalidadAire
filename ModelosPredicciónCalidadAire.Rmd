@@ -278,7 +278,7 @@ levels(datos$laborable)<-c(1,0,0,0)
 
 - Se imputa a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
 
-```{r imputación_valores2, message=FALSE, warning=FALSE}
+```{r imputación_valores, message=FALSE, warning=FALSE}
 
 for (i in levels(datos$contaminante)) {
   for (j in levels(datos$estacion)) {
@@ -324,10 +324,19 @@ ggplot(data = datos, aes(fecha)) + geom_line(aes(y = tmax, colour = "tmax")) + g
 ggplot(data = datos, aes(fecha)) + geom_line(aes(y = racha, colour = "racha")) + geom_line(aes(y = velMedia, colour = "velMedia")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Velocidad máxima y media del viento en 2018 (m/s)")
 ```
 
-- Se normalizan todas las medidas en un rango [0-1]
+- Se normalizan todas las medidas mediante *<<z-score>>* $$z_i = \frac{x_i - \overline{x}}{\sigma}$$
 
 ```{r normalización, message=FALSE, warning=FALSE}
 
+for (i in levels(datos$contaminante)) {
+  for (j in levels(datos$estacion)) {
+    if (nrow(datos[datos$contaminante==i & datos$estacion==j, 4:35]) != 0) {
+      datos[datos$contaminante==i & datos$estacion==j, 4:35] <- scale(datos[datos$contaminante==i & datos$estacion==j, 4:35], center = TRUE, scale = TRUE) 
+    }
+  }
+}
 
+# Guardamos los datos
+write.csv(datos, file = "datos_normalizados.csv", row.names = FALSE)
 
 ```

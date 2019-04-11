@@ -285,7 +285,7 @@ for (i in levels(datos$contaminante)) {
     for (k in colnames(datos)[4:35]) {
       temp<-is.na(datos[[k]])
       if (nrow(datos[temp & datos$contaminante==i & datos$estacion==j,][k]) != 0) {
-        datos[temp & datos$contaminante==i & datos$estacion==j,][k] <- mean(datos[[k]], na.rm = TRUE)
+        datos[temp & datos$contaminante==i & datos$estacion==j,][k] <- mean(data.matrix(datos[datos$contaminante==i & datos$estacion==j,][k]), na.rm = TRUE)
       }
       rm(temp)
     }

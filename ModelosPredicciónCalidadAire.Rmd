@@ -324,6 +324,18 @@ ggplot(data = datos, aes(fecha)) + geom_line(aes(y = tmax, colour = "tmax")) + g
 ggplot(data = datos, aes(fecha)) + geom_line(aes(y = racha, colour = "racha")) + geom_line(aes(y = velMedia, colour = "velMedia")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Velocidad máxima y media del viento en 2018 (m/s)")
 ```
 
+- Se incluye una columna con la media de las mediciones horarias de contaminación para cada día
+
+```{r media_diaria_contaminación}
+
+# Calculamos el nivel medio de contaminación para cada día
+datos <- transform(datos, media = rowMeans(data.matrix(datos[,4:27])))
+
+# Reordenamos las columnas
+datos<-datos[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")]
+
+```
+
 - Se normalizan todas las medidas mediante *<<z-score>>* $$z_i = \frac{x_i - \overline{x}}{\sigma}$$
 
 ```{r normalización, message=FALSE, warning=FALSE}

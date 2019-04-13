@@ -274,6 +274,9 @@ colnames(datos)[36]<-"laborable"
 # Codificamos el campo laborable
 levels(datos$laborable)<-c(1,0,0,0)
 
+# Cambiamos el tipo de dato del campo laborable a numérico
+datos$laborable<-as.numeric(levels(datos$laborable)[datos$laborable])
+
 ```
 
 - Se imputa a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
@@ -350,5 +353,20 @@ for (i in levels(datos$contaminante)) {
 
 # Guardamos los datos
 write.csv(datos, file = "datos_normalizados.csv", row.names = FALSE)
+
+```
+
+- Revisamos la correlación entre la media diaria de contaminación y el resto de atributos climatológicos y si el día es laboral o no
+
+```{r correlación}
+
+j=1
+
+for (i in levels(datos$contaminante)) {
+  print(paste0("Correlación de atributos para el contamiante: ", contaminante[j]))
+  print(cor(datos[datos$contaminante==i,28:37])[,"media"])
+  cat("\n")
+  j=j+1
+}
 
 ```

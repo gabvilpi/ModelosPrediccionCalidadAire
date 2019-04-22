@@ -223,6 +223,34 @@ ggplot(data = clima, aes(fecha)) + geom_line(aes(y = racha, colour = "racha")) +
 
 ```
 
+#### 1.2.3. Caracterización del clima de Madrid
+
+```{r Caracterización climática, message=FALSE, warning=FALSE}
+
+# Gráficos
+library(ggplot2)
+
+# primavera (20/03 -20/06)
+cat("Climatología en los meses de primavera:\n")
+print(colMeans(clima[format(clima$fecha,"%m-%d")>='03-20'&format(clima$fecha,"%m-%d")<='06-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+# verano (21/06 - 22/09)
+cat("\nClimatología en los meses de verano:\n")
+print(colMeans(clima[format(clima$fecha,"%m-%d")>='06-21'&format(clima$fecha,"%m-%d")<='09-22',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+# otoño (23/09 - 20/12)
+cat("\nClimatología en los meses de otoño:\n")
+print(colMeans(clima[format(clima$fecha,"%m-%d")>='09-23'&format(clima$fecha,"%m-%d")<='12-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+# invierno (21/12 - 19/03)
+cat("\nClimatología en los meses de invierno:\n")
+print(colMeans(clima[(format(clima$fecha,"%m-%d")>='12-21'&format(clima$fecha,"%m-%d")<='12-31') | (format(clima$fecha,"%m-%d")>='01-01' & format(clima$fecha,"%m-%d")<='03-19'),c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+# Precipitaciones
+ggplot(data = clima, aes(fecha, prec)) + geom_line(aes(y = prec, colour = "prec")) + geom_line(aes(y = tmed, colour = "tmed")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Precipitaciones (mm) y temperatura (ºC) en 2018")
+
+```
+
 #### 1.2.3. Calendario laboral
 
 ```{r exploracion_calendario, warning=FALSE, message=FALSE}

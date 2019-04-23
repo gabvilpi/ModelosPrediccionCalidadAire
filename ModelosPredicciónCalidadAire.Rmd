@@ -360,7 +360,7 @@ write.csv(datosNorm, file = "datos_normalizados.csv", row.names = FALSE)
 
 - Revisamos la correlación entre la media diaria de contaminación y el resto de atributos climatológicos y si el día es laboral o no
 
-```{r correlación}
+```{r correlación, message=FALSE, warning=FALSE}
 
 j=1
 
@@ -423,3 +423,46 @@ ggplot(data = clima, aes(x = as.Date(cut(clima$fecha, breaks = "month")), y = pr
 ```
 
 Durante el año 2018, el mes de mayor acumulación de lluvias fue marzo seguido de abril y mayo.
+
+### 1.5. Modelo de predicción de la calidad del aire de Madrid
+
+En los modelos de series temporales, los datos se recogen de manera secuencial durante el paso del tiempo.
+
+Estos modelos son de tipo supervisado, por lo que necesitan de una variable objetivo Y y un predictor X.
+
+Para conseguir esto, es necesario transformar la serie temporal (array de observaciones) en una nueva serie en la que se agrupen k observaciones consecutivas desde el momento t-k hasta t de forma que podamos entrenar al modelo con las k-1 observaciones anteriores a t como predictor X y la observación de t como variable objetivo Y.
+
+Por lo tanto, para nuestro modelo elegiremos un contaminante a predecir, tomaremos sus observaciones y las almacenaremos como una serie temporal. A continuación estableceremos el número de k de observaciones que agruparemos, por ejemplo 7 días y entrenaremos el modelo con las k-1 primeras observaciones como predictor X y la observación k como variable objetivo Y.
+
+```{r modelo_lstm, message=FALSE, warning=FALSE}
+
+# Seleccionamos el contaminante que deseamos predecir (código numérico)
+c = 8
+
+# Determinamos el número k de observaciones a agrupar
+k = 7
+
+# Almacenamos las observaciones del contaminante c como series temporales en X
+X <- datos[datos$contaminante==c,"media"]
+
+# Creamos un data frame en el que almacenar las observaciones agrupadas
+X_lagged <- data.frame()
+
+# Agrupamos las observaciones en grupos de k observaciones consecutivas
+for (i in k:length(X)) {
+  X_lagged <- rbind(X_lagged, X[(i-(k-1)):i])
+}
+
+# Modificamos el nombre de las columnas
+colnames(X_lagged) <- c("x1","x2","x3","x4","x5","x6","Y")
+
+# Sustituimos X por el nuevo dataframe sin la variable objetivo Y
+X <- X_lagged[-7]
+
+# Almacenamos la variable objetivo en Y
+Y <- X_lagged["Y"]
+
+# Borramos el dataframe temporal
+rm(X_lagged)
+
+```

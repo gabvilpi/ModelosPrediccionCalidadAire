@@ -456,11 +456,14 @@ for (i in k:length(X)) {
 # Modificamos el nombre de las columnas
 colnames(X_lagged) <- c("x1","x2","x3","x4","x5","x6","Y")
 
-# Sustituimos X por el nuevo dataframe sin la variable objetivo Y
-X <- X_lagged[-7]
+# Separamos aleatoriamente los conjuntos de entrenamiento y prueba (80% y 20% respectivamente)
+sample<-sample.int(nrow(X_lagged),0.8*nrow(X_lagged))
 
-# Almacenamos la variable objetivo en Y
-Y <- X_lagged["Y"]
+X_train <- X_lagged[sample,-7]
+Y_train <- X_lagged[sample,7]
+
+X_test <- X_lagged[-sample,-7]
+Y_test <- X_lagged[-sample,7]
 
 # Borramos el dataframe temporal
 rm(X_lagged)

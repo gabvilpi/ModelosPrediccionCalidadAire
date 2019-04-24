@@ -453,7 +453,7 @@ datos$contaminante <- as.factor(datos$contaminante)
 
 ```
 
-```{r modelo_lstm, message=FALSE, warning=FALSE}
+```{r preparacion_datos, message=FALSE, warning=FALSE}
 
 # Seleccionamos el contaminante que deseamos predecir (código numérico)
 c = 8
@@ -487,4 +487,56 @@ Y_test <- X_lagged[-sample,7]
 # Borramos el dataframe temporal
 rm(X_lagged)
 
+```
+
+```{r modelo_lstm, message=FALSE, warning=FALSE}
+
+# Creamos un modelo secuencial como una pila lineal de capas
+model <- keras_model_sequential()
+
+# Añadimos las capas al modelo
+model %>%
+  layer_lstm(units = 6, batch_input_shape = c(1, 6, 1), 
+             return_sequences = TRUE, stateful=TRUE) %>% 
+  layer_lstm(units = 6, return_sequences = TRUE, stateful=TRUE) %>% 
+  layer_lstm(units = 6, return_sequences = FALSE, stateful=TRUE) %>% 
+  layer_dense(units = 1)
+
+# Compilamos el modelo
+model %>% compile(loss = 'mse', optimizer = 'rmsprop')
+```
+
+```{r train_lstm, message=FALSE, warning=FALSE}
+
+# Convertimos el data frame X_train en una matriz
+X_train <- data.matrix(X_train)
+
+# Redimensionamos la matrix X_train
+dim(X_train) <- c(nrow(X_train),6,1)
+
+model %>% fit(X_train, Y_train, batch_size = 1, epochs = 1, verbose = 1, shuffle = FALSE)
+
+```
+
+```{r test_lstm, message=FALSE, warning=FALSE}
+
+# Convertimos el data frame X_test en una matriz
+X_test<-data.matrix(X_test)
+
+# Redimensionamos la matrix X_train
+dim(X_test) <- c(nrow(X_test),6,1)
+
+cat('Predicting\n')
+Y_pred <- model %>% predict(X_test, batch_size = 1)
+
+```
+
+```{r evaluacion_lstm}
+cat('Plotting Results\n')
+op <- par(mfrow=c(2,1))
+plot(Y_test, xlab = '')
+title("Expected")
+plot(Y_pred, xlab = '')
+title("Predicted")
+par(op)
 ```

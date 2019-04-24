@@ -337,6 +337,9 @@ datos <- transform(datos, media = rowMeans(data.matrix(datos[,4:27])))
 # Reordenamos las columnas
 datos<-datos[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")]
 
+# Guardamos los datos
+write.csv(datos, file = "datos.csv", row.names = FALSE)
+
 ```
 
 - Se normalizan todas las medidas mediante *z-score* $$z_i = \frac{x_i - \overline{x}}{\sigma}$$ en un nuevo dataframe "datosNorm"
@@ -433,6 +436,22 @@ Estos modelos son de tipo supervisado, por lo que necesitan de una variable obje
 Para conseguir esto, es necesario transformar la serie temporal (array de observaciones) en una nueva serie en la que se agrupen k observaciones consecutivas desde el momento t-k hasta t de forma que podamos entrenar al modelo con las k-1 observaciones anteriores a t como predictor X y la observación de t como variable objetivo Y.
 
 Por lo tanto, para nuestro modelo elegiremos un contaminante a predecir, tomaremos sus observaciones y las almacenaremos como una serie temporal. A continuación estableceremos el número de k de observaciones que agruparemos, por ejemplo 7 días y entrenaremos el modelo con las k-1 primeras observaciones como predictor X y la observación k como variable objetivo Y.
+
+```{r carga_datos, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Carga del fichero "datos.csv" con los datos ya preprocesados
+
+# Establecemos el nombre de las columnas
+columnas <- c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")
+
+datos <- read.csv(file = "datos.csv", header = TRUE, sep = ",", col.names = columnas)
+
+# Establecemos el tipo de dato de cada columna
+datos$estacion <- as.factor(datos$estacion)
+datos$fecha<-as.Date(datos$fecha, format("%Y-%m-%d"))
+datos$contaminante <- as.factor(datos$contaminante)
+
+```
 
 ```{r modelo_lstm, message=FALSE, warning=FALSE}
 

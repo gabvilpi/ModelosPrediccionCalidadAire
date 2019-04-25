@@ -491,6 +491,9 @@ rm(X_lagged)
 
 ```{r modelo_lstm, message=FALSE, warning=FALSE}
 
+# Importamos la librería keras para crear el modelo
+library(keras)
+
 # Creamos un modelo secuencial como una pila lineal de capas
 model <- keras_model_sequential()
 

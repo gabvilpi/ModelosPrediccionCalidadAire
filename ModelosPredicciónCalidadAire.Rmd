@@ -327,22 +327,29 @@ ggplot(data = datos, aes(fecha)) + geom_line(aes(y = tmax, colour = "tmax")) + g
 ggplot(data = datos, aes(fecha)) + geom_line(aes(y = racha, colour = "racha")) + geom_line(aes(y = velMedia, colour = "velMedia")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Velocidad máxima y media del viento en 2018 (m/s)")
 ```
 
-- Se incluye una columna con la media de las mediciones horarias de contaminación para cada día
+- Se incluye una columna con la media y otra con el máximo de las mediciones horarias de contaminación en esa estación para cada día
 
-```{r media_diaria_contaminación}
+```{r media_y_max_diario_contaminación}
 
-# Calculamos el nivel medio de contaminación para cada día
+# Calculamos el nivel medio de contaminación en cada estación para cada día
 datos <- transform(datos, media = rowMeans(data.matrix(datos[,4:27])))
 
+# Cargamos la librería matrixStats para usar la función rowMaxs
+library(matrixStats)
+
+# Calculamos el nivel máximo de contaminación en cada estación para cada día
+datos <- transform(datos, maximo = rowMaxs(data.matrix(datos[,4:27])))
+
 # Reordenamos las columnas
-datos<-datos[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")]
+datos<-datos[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","maximo","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")]
 
 # Guardamos los datos
 write.csv(datos, file = "datos.csv", row.names = FALSE)
 
 ```
 
-- Se normalizan todas las medidas mediante *z-score* $$z_i = \frac{x_i - \overline{x}}{\sigma}$$ en un nuevo dataframe "datosNorm"
+- Se normalizan todas las medidas mediante *z-score* en un nuevo dataframe "datosNorm": 
+$$z_i = \frac{x_i - \overline{x}}{\sigma}$$
 
 ```{r normalización, message=FALSE, warning=FALSE}
 
@@ -442,7 +449,7 @@ Por lo tanto, para nuestro modelo elegiremos un contaminante a predecir, tomarem
 # Carga del fichero "datos.csv" con los datos ya preprocesados
 
 # Establecemos el nombre de las columnas
-columnas <- c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")
+columnas <- c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","maximo","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")
 
 datos <- read.csv(file = "datos.csv", header = TRUE, sep = ",", col.names = columnas)
 
@@ -462,7 +469,7 @@ c = 8
 k = 7
 
 # Almacenamos las observaciones del contaminante c como series temporales en X
-X <- datos[datos$contaminante==c,"media"]
+X <- datos[datos$estacion==28079050 & datos$contaminante==c,"media"]
 
 # Creamos un data frame en el que almacenar las observaciones agrupadas
 X_lagged <- data.frame()
@@ -494,12 +501,15 @@ rm(X_lagged)
 # Importamos la librería keras para crear el modelo
 library(keras)
 
+# Determinamos batch_size
+batch_size = 1
+
 # Creamos un modelo secuencial como una pila lineal de capas
 model <- keras_model_sequential()
 
 # Añadimos las capas al modelo
 model %>%
-  layer_lstm(units = 6, batch_input_shape = c(1, 6, 1), 
+  layer_lstm(units = 6, batch_input_shape = c(batch_size, 6, 1), 
              return_sequences = TRUE, stateful=TRUE) %>% 
   layer_lstm(units = 6, return_sequences = TRUE, stateful=TRUE) %>% 
   layer_lstm(units = 6, return_sequences = FALSE, stateful=TRUE) %>% 
@@ -511,13 +521,16 @@ model %>% compile(loss = 'mse', optimizer = 'rmsprop')
 
 ```{r train_lstm, message=FALSE, warning=FALSE}
 
+# Truncamos las observaciones de X_train y Y_train para coincidir con el batch_size
+num = batch_size*as.integer(nrow(X_train)/batch_size)
+
 # Convertimos el data frame X_train en una matriz
-X_train <- data.matrix(X_train)
+X_train <- data.matrix(X_train[1:num,])
 
 # Redimensionamos la matrix X_train
-dim(X_train) <- c(nrow(X_train),6,1)
+dim(X_train) <- c(dim(prueba),1)
 
-model %>% fit(X_train, Y_train, batch_size = 1, epochs = 1, verbose = 1, shuffle = FALSE)
+model %>% fit(X_train, Y_train[1:num], batch_size = batch_size, epochs = 15, verbose = 1, shuffle = FALSE)
 
 ```
 

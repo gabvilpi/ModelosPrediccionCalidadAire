@@ -469,27 +469,32 @@ c = 8
 k = 7
 
 # Almacenamos las observaciones del contaminante c como series temporales en X
-X <- datos[datos$estacion==28079050 & datos$contaminante==c,"media"]
+X <- datos[datos$contaminante==c, c("estacion","media")]
 
 # Creamos un data frame en el que almacenar las observaciones agrupadas
 X_lagged <- data.frame()
 
 # Agrupamos las observaciones en grupos de k observaciones consecutivas
-for (i in k:length(X)) {
-  X_lagged <- rbind(X_lagged, X[(i-(k-1)):i])
+for (i in levels(X$estacion)) {
+  X_lagged <- rbind(X_lagged, t(matrix(X[X$estacion==i,"media"], nrow = k, ncol =  as.integer(nrow(X)/k))))
 }
 
-# Modificamos el nombre de las columnas
-colnames(X_lagged) <- c("x1","x2","x3","x4","x5","x6","Y")
+# Agrupamos las observaciones en grupos de k observaciones consecutivas (version deslizada)
+#for (i in levels(X$estacion)) {
+#  for (j in k:nrow(X)) {
+#    X_lagged <- rbind(X_lagged, X[X$estacion,][(j-(k-1)):j,])
+#  }
+#}
 
 # Separamos aleatoriamente los conjuntos de entrenamiento y prueba (80% y 20% respectivamente)
-sample<-sample.int(nrow(X_lagged),0.8*nrow(X_lagged))
+#sample<-sample.int(nrow(X_lagged),0.8*nrow(X_lagged))
+sample<-c(1:(0.8*nrow(X_lagged)))
 
-X_train <- X_lagged[sample,-7]
-Y_train <- X_lagged[sample,7]
+X_train <- X_lagged[sample,-k]
+Y_train <- X_lagged[sample,k]
 
-X_test <- X_lagged[-sample,-7]
-Y_test <- X_lagged[-sample,7]
+X_test <- X_lagged[-sample,-k]
+Y_test <- X_lagged[-sample,k]
 
 # Borramos el dataframe temporal
 rm(X_lagged)
@@ -504,55 +509,64 @@ library(keras)
 # Determinamos batch_size
 batch_size = 1
 
+# Determinamos el número de épocas
+epochs = 1
+
 # Creamos un modelo secuencial como una pila lineal de capas
 model <- keras_model_sequential()
 
 # Añadimos las capas al modelo
 model %>%
-  layer_lstm(units = 6, batch_input_shape = c(batch_size, 6, 1), 
+  layer_lstm(units = 6, batch_input_shape = c(batch_size, k-1, 1), 
              return_sequences = TRUE, stateful=TRUE) %>% 
   layer_lstm(units = 6, return_sequences = TRUE, stateful=TRUE) %>% 
   layer_lstm(units = 6, return_sequences = FALSE, stateful=TRUE) %>% 
   layer_dense(units = 1)
 
 # Compilamos el modelo
-model %>% compile(loss = 'mse', optimizer = 'rmsprop')
+model %>% compile(loss = 'mse', optimizer = 'Adam')
 ```
 
 ```{r train_lstm, message=FALSE, warning=FALSE}
 
-# Truncamos las observaciones de X_train y Y_train para coincidir con el batch_size
+# Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
 num = batch_size*as.integer(nrow(X_train)/batch_size)
 
 # Convertimos el data frame X_train en una matriz
 X_train <- data.matrix(X_train[1:num,])
 
 # Redimensionamos la matrix X_train
-dim(X_train) <- c(dim(prueba),1)
+dim(X_train) <- c(dim(X_train),1)
 
-model %>% fit(X_train, Y_train[1:num], batch_size = batch_size, epochs = 15, verbose = 1, shuffle = FALSE)
+model %>% fit(X_train, Y_train[1:num], batch_size = batch_size, epochs = epochs, verbose = 1, shuffle = FALSE)
 
 ```
 
 ```{r test_lstm, message=FALSE, warning=FALSE}
 
+# Truncamos las observaciones de X_test  e Y_test para coincidir con el batch_size
+num = batch_size*as.integer(nrow(X_test)/batch_size)
+
 # Convertimos el data frame X_test en una matriz
-X_test<-data.matrix(X_test)
+X_test<-data.matrix(X_test[1:num,])
 
 # Redimensionamos la matrix X_train
-dim(X_test) <- c(nrow(X_test),6,1)
+dim(X_test) <- c(dim(X_test),1)
 
-cat('Predicting\n')
-Y_pred <- model %>% predict(X_test, batch_size = 1)
+Y_pred <- model %>% predict(X_test, batch_size = batch_size)
 
 ```
 
 ```{r evaluacion_lstm}
-cat('Plotting Results\n')
-op <- par(mfrow=c(2,1))
-plot(Y_test, xlab = '')
-title("Expected")
-plot(Y_pred, xlab = '')
-title("Predicted")
-par(op)
+
+library(ggplot2)
+
+pos <- c(1:num)
+result <- cbind(pos, Y_test[1:num])
+result <- cbind(result, Y_pred)
+colnames(result) <- c("pos","Y_test","Y_pred")
+result <- as.data.frame(result)
+
+ggplot(data = result, aes(pos)) + geom_line(aes(y = Y_test, colour = "Y_test")) + geom_line(aes(y = Y_pred, colour = "Y_pred"))
+
 ```

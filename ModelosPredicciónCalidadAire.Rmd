@@ -466,17 +466,17 @@ datos$contaminante <- as.factor(datos$contaminante)
 c = 8
 
 # Determinamos el número k de observaciones a agrupar
-k = 7
+k = 2
 
 # Almacenamos las observaciones del contaminante c como series temporales en X
-X <- datos[datos$contaminante==c, c("estacion","media")]
+X <- datos[datos$contaminante==c, c("estacion","maximo")]
 
 # Creamos un data frame en el que almacenar las observaciones agrupadas
 X_lagged <- data.frame()
 
 # Agrupamos las observaciones en grupos de k observaciones consecutivas
 for (i in levels(X$estacion)) {
-  X_lagged <- rbind(X_lagged, t(matrix(X[X$estacion==i,"media"], nrow = k, ncol =  as.integer(nrow(X)/k))))
+  X_lagged <- rbind(X_lagged, t(matrix(X[X$estacion==i,"maximo"], nrow = k, ncol =  as.integer(nrow(X)/k))))
 }
 
 # Agrupamos las observaciones en grupos de k observaciones consecutivas (version deslizada)
@@ -496,8 +496,9 @@ Y_train <- X_lagged[sample,k]
 X_test <- X_lagged[-sample,-k]
 Y_test <- X_lagged[-sample,k]
 
-# Borramos el dataframe temporal
+# Borramos los dataframes temporales
 rm(X_lagged)
+rm(X)
 
 ```
 
@@ -506,37 +507,57 @@ rm(X_lagged)
 # Importamos la librería keras para crear el modelo
 library(keras)
 
+# Destroys the current TF graph and creates a new one. Useful to avoid clutter from old models / layers.
+k_clear_session()
+
 # Determinamos batch_size
 batch_size = 1
-
-# Determinamos el número de épocas
-epochs = 1
 
 # Creamos un modelo secuencial como una pila lineal de capas
 model <- keras_model_sequential()
 
 # Añadimos las capas al modelo
 model %>%
-  layer_lstm(units = 6, batch_input_shape = c(batch_size, k-1, 1), 
+  layer_lstm(units = 8, batch_input_shape = c(batch_size, k-1, 1), 
              return_sequences = TRUE, stateful=TRUE) %>% 
-  layer_lstm(units = 6, return_sequences = TRUE, stateful=TRUE) %>% 
-  layer_lstm(units = 6, return_sequences = FALSE, stateful=TRUE) %>% 
+  layer_lstm(units = 8, return_sequences = TRUE, stateful=TRUE) %>% 
+  layer_lstm(units = 8, return_sequences = FALSE, stateful=TRUE) %>% 
   layer_dense(units = 1)
 
 # Compilamos el modelo
-model %>% compile(loss = 'mse', optimizer = 'Adam')
+model %>% compile(loss = 'mean_squared_error', optimizer = 'Adam')
 ```
 
 ```{r train_lstm, message=FALSE, warning=FALSE}
 
-# Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
-num = batch_size*as.integer(nrow(X_train)/batch_size)
+# Determinamos el número de épocas
+epochs = 1
 
-# Convertimos el data frame X_train en una matriz
-X_train <- data.matrix(X_train[1:num,])
+if(typeof(X_train)=="list") {
+  #X_train contiene varias columnas
+  
+  # Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
+  num = batch_size*as.integer(nrow(X_train)/batch_size)
 
-# Redimensionamos la matrix X_train
-dim(X_train) <- c(dim(X_train),1)
+  # Convertimos el data frame X_train en una matriz
+  X_train <- data.matrix(X_train[1:num,]) #Si X_train contiene varias columnas
+
+  # Redimensionamos la matrix X_train
+  dim(X_train) <- c(dim(X_train),1)
+
+} else {
+  # X_train es un Array
+
+  # Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
+  num = batch_size*as.integer(length(X_train)/batch_size)
+
+  # Convertimos el data frame X_train en una matriz
+  X_train <- data.matrix(X_train[1:num]) #Si X_train es un Array
+
+  # Redimensionamos la matrix X_train
+  dim(X_train) <- c(dim(X_train),1)
+
+}
 
 model %>% fit(X_train, Y_train[1:num], batch_size = batch_size, epochs = epochs, verbose = 1, shuffle = FALSE)
 
@@ -544,14 +565,31 @@ model %>% fit(X_train, Y_train[1:num], batch_size = batch_size, epochs = epochs,
 
 ```{r test_lstm, message=FALSE, warning=FALSE}
 
-# Truncamos las observaciones de X_test  e Y_test para coincidir con el batch_size
-num = batch_size*as.integer(nrow(X_test)/batch_size)
+if(typeof(X_test)=="list") {
+  #X_test contiene varias columnas
+  
+  # Truncamos las observaciones de X_test e Y_test para coincidir con el batch_size
+  num = batch_size*as.integer(nrow(X_test)/batch_size)
 
-# Convertimos el data frame X_test en una matriz
-X_test<-data.matrix(X_test[1:num,])
+  # Convertimos el data frame X_train en una matriz
+  X_test <- data.matrix(X_test[1:num,]) #Si X_test contiene varias columnas
 
-# Redimensionamos la matrix X_train
-dim(X_test) <- c(dim(X_test),1)
+  # Redimensionamos la matrix X_train
+  dim(X_test) <- c(dim(X_test),1)
+
+} else {
+  # X_test es un Array
+
+  # Truncamos las observaciones de X_test e Y_test para coincidir con el batch_size
+  num = batch_size*as.integer(length(X_test)/batch_size)
+
+  # Convertimos el data frame X_test en una matriz
+  X_test <- data.matrix(X_test[1:num]) #Si X_test es un Array
+
+  # Redimensionamos la matrix X_test
+  dim(X_test) <- c(dim(X_test),1)
+
+}
 
 Y_pred <- model %>% predict(X_test, batch_size = batch_size)
 

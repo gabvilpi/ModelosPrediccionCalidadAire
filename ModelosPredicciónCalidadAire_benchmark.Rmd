@@ -642,6 +642,8 @@ for (k in k_valores) {
     for (units in units_valores) {
       for (epochs in epochs_valores) {
         
+        cat("Evaluando modelo LSTM con c:",c,"k:",k,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
+        
         X_lagged <- preparar_datos(c, k)
 
         # Separamos aleatoriamente los conjuntos de entrenamiento y prueba (80% y 20% respectivamente)

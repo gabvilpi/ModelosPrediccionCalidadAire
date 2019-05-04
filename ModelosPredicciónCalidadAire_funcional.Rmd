@@ -542,9 +542,58 @@ preparar_datos <- function(c, predictores) {
   }
   
   returnList <- list("X_train" = X_train, "Y_train" = Y_train, "X_test" = X_test, "Y_test" = Y_test)
+  
+  # Normalizamos los datos
+  returnList <- normalizar(returnList)
+  
   return(returnList)
   
+}
+
+normalizar <- function(dataList) {
+  
+  if (typeof(dataList$X_train) == "list") {
+    # X_train y X_test contiene varios predictores
+    
+    # Calculamos los máximos y mínimos de cada predictor
+    dataList$maxXTrain = sapply(dataList$X_train, max)
+    dataList$minXTrain = sapply(dataList$X_train, min)
+    dataList$maxXTest = sapply(dataList$X_test, max)
+    dataList$minXTest = sapply(dataList$X_test, min)
+    
+    # Normalizamos cada columna
+    for (i in 1:length(dataList$X_train)) {
+      
+      dataList$X_train[,i] <- (dataList$X_train[,i] - dataList$minXTrain[i]) / (dataList$maxXTrain[i] - dataList$minXTrain[i])
+      dataList$X_test[,i] <- (dataList$X_test[,i] - dataList$minXTest[i]) / (dataList$maxXTest[i] - dataList$minXTest[i])
+      
+    }
+    
+  } else {
+    # X_train y X_test contiene un único predictor
+    
+    # Calculamos el máximo y el mínimo del predictor para proceder a la normalización
+    dataList$maxXTrain = max(dataList$X_train)
+    dataList$minXTrain = min(dataList$X_train)
+    dataList$maxXTest = max(dataList$X_test)
+    dataList$minXTest = min(dataList$X_test)
+    
+    # Normalizamos los datos
+    dataList$X_train <- (dataList$X_train - dataList$minXTrain) / (dataList$maxXTrain - dataList$minXTrain)
+    dataList$X_test <- (dataList$X_test - dataList$minXTest) / (dataList$maxXTest - dataList$minXTest)
   }
+  
+  dataList$maxYTrain = max(dataList$Y_train)
+  dataList$minYTrain = min(dataList$Y_train)
+  dataList$maxYTest = max(dataList$Y_test)
+  dataList$minYTest = min(dataList$Y_test)
+  
+  dataList$Y_train <- (dataList$Y_train - dataList$minYTrain) / (dataList$maxYTrain - dataList$minYTrain)
+  dataList$Y_test <- (dataList$Y_test - dataList$minYTest) / (dataList$maxYTest - dataList$minYTest)
+  
+  return(dataList)
+  
+}
 
 ```
 
@@ -680,7 +729,7 @@ evaluar_modelo_lstm <- function() {
 c = 8 # Dióxido de nitrógeno
 predictores = c(1,2,3) # Las variables predictoras serán 1, 3, 5 y 7
 batch_size_valores = c(1)
-units_valores = c(1,9,10)
+units_valores = c(1)
 epochs_valores = c(1)
 
 resultados <- data.frame()
@@ -707,6 +756,11 @@ for (k in predictores) {
         entrenar_modelo_lstm(modelo = modelo, batch_size, epochs)
         Y_pred <- predicciones_modelo_lstm(modelo = modelo, batch_size)
         rmse = evaluar_modelo_lstm()
+        
+        # Revertimos la normalización de los datos de test
+        Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+        Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+        resultado<-cbind(Y_test,Y_pred)
         
         resultados <- rbind(resultados, c(c,k,batch_size,units,epochs,rmse))
         colnames(resultados) <- c("c","k","batch_size","units","epochs","rmse")

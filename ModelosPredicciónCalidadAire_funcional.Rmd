@@ -505,7 +505,7 @@ preparar_datos <- function(c, predictores) {
     }
     
     Y <- X[-1,"maximo"]
-    X <- X[-length(X),]
+    X <- X[-nrow(X),]
     
     # Separamos X en un set de entrenamiento y otro de test (80% y 20% respectivamente)
     sample<-c(1:(0.8*nrow(X)))
@@ -528,7 +528,7 @@ preparar_datos <- function(c, predictores) {
     }
     
     Y <- X[-1,"maximo"]
-    X <- X[-length(X),]
+    X <- X[-nrow(X),]
     
     # Separamos X en un set de entrenamiento y otro de test (80% y 20% respectivamente)
     sample<-c(1:(0.8*nrow(X)))

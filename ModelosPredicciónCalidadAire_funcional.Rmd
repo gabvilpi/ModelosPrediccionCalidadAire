@@ -462,12 +462,14 @@ datos$contaminante <- as.factor(datos$contaminante)
 
 ```{r preparar_datos, message=FALSE, warning=FALSE}
 
-preparar_datos <- function(c, predictores) {
+preparar_datos <- function(c, estacion, predictores) {
   
   # c: Código del contaminante cuya medida seleccionar
-  # predictores: 1 sólo medidas de contaminación, 2 medidas de contaminación y climatología, 3 medidas de contaminación, climatología y calendario laboral 
+  # estacion: código de la estación a analizar
+  # predictores: 1 sólo medidas de contaminación, 2 medidas de contaminación y climatología, 3 medidas de contaminación, climatología y calendario laboral
   
   if (is.null(c)) stop("El parámetro c (código de contaminante) es obligatorio.")
+  if (is.null(estacion)) stop("El parámetro estación es obligatorio.")
   if (is.null(predictores)) stop("El parámetro preditores es obligatorio.")
   
   if (predictores == 1) {
@@ -475,11 +477,7 @@ preparar_datos <- function(c, predictores) {
     # Sólo se utilizan los datos de medidas de contaminación para el contaminante c
     
     # Almacenamos las observaciones del contaminante c como series temporales en X e Y siendo Y[i] la siguiente medición a X[i]
-    X <- vector()
-    
-    for (estacion in levels(datos$estacion)) {
-      X<-c(X,datos[datos$contaminante==c&datos$estacion==estacion,"maximo"])
-    }
+	X <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
     
     Y <- X[-1]
     X <- X[-length(X)]
@@ -498,11 +496,7 @@ preparar_datos <- function(c, predictores) {
     # Se utilizan los datos de medidas de contaminación y las medidas climatológicas
     
     # Almacenamos las observaciones del contaminante c como series temporales en X e Y siendo Y[i,] las siguientes mediciones a X[i,]
-    X <- data.frame()
-    
-    for (estacion in levels(datos$estacion)) {
-      X <- rbind(X,datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")])
-    }
+	X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
     
     Y <- X[-1,"maximo"]
     X <- X[-nrow(X),]
@@ -521,11 +515,7 @@ preparar_datos <- function(c, predictores) {
     # Se utilizan los datos de medidas de contaminación, las medidas climatológicas y el calendario laboral
     
     # Almacenamos las observaciones del contaminante c como series temporales en X e Y siendo Y[i,] las siguientes mediciones a X[i,]
-    X <- data.frame()
-    
-    for (estacion in levels(datos$estacion)) {
-      X <- rbind(X,datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia","laborable")])
-    }
+	X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia","laborable")]
     
     Y <- X[-1,"maximo"]
     X <- X[-nrow(X),]
@@ -553,7 +543,7 @@ preparar_datos <- function(c, predictores) {
 normalizar <- function(dataList) {
   
   if (typeof(dataList$X_train) == "list") {
-    # X_train y X_test contiene varios predictores
+    # X_train y X_test contienen varios predictores
     
     # Calculamos los máximos y mínimos de cada predictor
     dataList$maxXTrain = sapply(dataList$X_train, max)
@@ -570,7 +560,7 @@ normalizar <- function(dataList) {
     }
     
   } else {
-    # X_train y X_test contiene un único predictor
+    # X_train y X_test contienen un único predictor
     
     # Calculamos el máximo y el mínimo del predictor para proceder a la normalización
     dataList$maxXTrain = max(dataList$X_train)
@@ -582,12 +572,14 @@ normalizar <- function(dataList) {
     dataList$X_train <- (dataList$X_train - dataList$minXTrain) / (dataList$maxXTrain - dataList$minXTrain)
     dataList$X_test <- (dataList$X_test - dataList$minXTest) / (dataList$maxXTest - dataList$minXTest)
   }
-  
+
+  # Calculamos el máximo y el mínimo de la variable objetivo para proceder a la normalización
   dataList$maxYTrain = max(dataList$Y_train)
   dataList$minYTrain = min(dataList$Y_train)
   dataList$maxYTest = max(dataList$Y_test)
   dataList$minYTest = min(dataList$Y_test)
   
+  # Normalizamos los datos
   dataList$Y_train <- (dataList$Y_train - dataList$minYTrain) / (dataList$maxYTrain - dataList$minYTrain)
   dataList$Y_test <- (dataList$Y_test - dataList$minYTest) / (dataList$maxYTest - dataList$minYTest)
   
@@ -724,13 +716,35 @@ evaluar_modelo_lstm <- function() {
 
 ```
 
+```{r mostrar_prediccion, message=FALSE, warning=FALSE}
+
+comparar_prediccion<-function(Y_test,Y_pred) {
+  
+  # Importamos la librería ggplot2
+  library(ggplot2)
+  
+  # Creamos un data frame con los datos reales y las predicciones
+  resultado <- cbind(Y_test[1:length(Y_pred)],Y_pred)
+  resultado <- as.data.frame(resultado)
+  
+  # Creamos un vector X con para el eje de abscisas
+  X <- c(1:length(Y_pred))
+  
+  # Mostramos los datos reales y las predicciones con un gráfico de líneas
+  ggplot() + geom_line(data = resultado, aes(x=X, y=resultado$V1, colour = "Y_test"), size = 1) + geom_line(data = resultado, aes(x=X, y=resultado$V2, colour = "Y_pred"), size = 1) + xlab("Tiempo") + ylab("Contaminación")
+  
+}
+
+```
+
 ```{r model_bench, message=FALSE, warning=FALSE}
 
 c = 8 # Dióxido de nitrógeno
+estacion = 28079004
 predictores = c(1,2,3) # Las variables predictoras serán 1, 3, 5 y 7
-batch_size_valores = c(1)
-units_valores = c(1)
-epochs_valores = c(1)
+batch_size_valores = c(1,7,30)
+units_valores = c(1,8,16,32,64)
+epochs_valores = c(1,5,10)
 
 resultados <- data.frame()
 
@@ -743,9 +757,9 @@ for (k in predictores) {
     for (units in units_valores) {
       for (epochs in epochs_valores) {
         
-        cat("Evaluando modelo LSTM con c:",c,"Predictores:",k,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
+        cat("Evaluando modelo LSTM con c:",c,"predictores:",k,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
         
-        returnList <- preparar_datos(c, k)
+        returnList <- preparar_datos(c, estacion, k)
         
         X_train <- returnList$X_train
         Y_train <- returnList$Y_train
@@ -760,7 +774,7 @@ for (k in predictores) {
         # Revertimos la normalización de los datos de test
         Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
         Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
-        resultado<-cbind(Y_test,Y_pred)
+        print(comparar_prediccion(Y_test,Y_pred))
         
         resultados <- rbind(resultados, c(c,k,batch_size,units,epochs,rmse))
         colnames(resultados) <- c("c","k","batch_size","units","epochs","rmse")

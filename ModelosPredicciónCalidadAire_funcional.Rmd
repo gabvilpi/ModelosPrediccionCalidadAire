@@ -451,6 +451,7 @@ Por lo tanto, para nuestro modelo elegiremos un contaminante a predecir, tomarem
 # Establecemos el nombre de las columnas
 columnas <- c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","maximo","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")
 
+# Leemos el fichero "datos.csv" y almacenamos los datos en el data frame datos
 datos <- read.csv(file = "datos.csv", header = TRUE, sep = ",", col.names = columnas)
 
 # Establecemos el tipo de dato de cada columna
@@ -464,8 +465,8 @@ datos$contaminante <- as.factor(datos$contaminante)
 
 preparar_datos <- function(c, estacion, predictores) {
   
-  # c: Código del contaminante cuya medida seleccionar
-  # estacion: código de la estación a analizar
+  # c: Código del contaminante seleccionado
+  # estacion: Código de la estación a analizar
   # predictores: 1 sólo medidas de contaminación, 2 medidas de contaminación y climatología, 3 medidas de contaminación, climatología y calendario laboral
   
   if (is.null(c)) stop("El parámetro c (código de contaminante) es obligatorio.")
@@ -476,13 +477,13 @@ preparar_datos <- function(c, estacion, predictores) {
     
     # Sólo se utilizan los datos de medidas de contaminación para el contaminante c
     
-    # Almacenamos las observaciones del contaminante c como series temporales en X e Y siendo Y[i] la siguiente medición a X[i]
-	X <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
+    # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i] la siguiente medición a X[i]
+    X <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
     
     Y <- X[-1]
     X <- X[-length(X)]
     
-    # Separamos X en un set de entrenamiento y otro de test (80% y 20% respectivamente)
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
     sample<-c(1:(0.8*length(X)))
         
     X_train <- X[sample]
@@ -495,13 +496,13 @@ preparar_datos <- function(c, estacion, predictores) {
     
     # Se utilizan los datos de medidas de contaminación y las medidas climatológicas
     
-    # Almacenamos las observaciones del contaminante c como series temporales en X e Y siendo Y[i,] las siguientes mediciones a X[i,]
-	X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
+    # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] las siguientes mediciones a X[i,]
+    X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
     
     Y <- X[-1,"maximo"]
     X <- X[-nrow(X),]
     
-    # Separamos X en un set de entrenamiento y otro de test (80% y 20% respectivamente)
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
     sample<-c(1:(0.8*nrow(X)))
         
     X_train <- X[sample,]
@@ -514,13 +515,13 @@ preparar_datos <- function(c, estacion, predictores) {
     
     # Se utilizan los datos de medidas de contaminación, las medidas climatológicas y el calendario laboral
     
-    # Almacenamos las observaciones del contaminante c como series temporales en X e Y siendo Y[i,] las siguientes mediciones a X[i,]
-	X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia","laborable")]
+    # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] las siguientes mediciones a X[i,]
+    X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia","laborable")]
     
     Y <- X[-1,"maximo"]
     X <- X[-nrow(X),]
     
-    # Separamos X en un set de entrenamiento y otro de test (80% y 20% respectivamente)
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
     sample<-c(1:(0.8*nrow(X)))
         
     X_train <- X[sample,]
@@ -531,6 +532,7 @@ preparar_datos <- function(c, estacion, predictores) {
     
   }
   
+  # Almacenamos los sets de datos en una lista (facilita el return de la función)
   returnList <- list("X_train" = X_train, "Y_train" = Y_train, "X_test" = X_test, "Y_test" = Y_test)
   
   # Normalizamos los datos
@@ -541,6 +543,8 @@ preparar_datos <- function(c, estacion, predictores) {
 }
 
 normalizar <- function(dataList) {
+  
+  # Normalizamos los datos entre 0 y 1
   
   if (typeof(dataList$X_train) == "list") {
     # X_train y X_test contienen varios predictores
@@ -560,9 +564,10 @@ normalizar <- function(dataList) {
     }
     
   } else {
+    
     # X_train y X_test contienen un único predictor
     
-    # Calculamos el máximo y el mínimo del predictor para proceder a la normalización
+    # Calculamos el máximo y el mínimo del predictor
     dataList$maxXTrain = max(dataList$X_train)
     dataList$minXTrain = min(dataList$X_train)
     dataList$maxXTest = max(dataList$X_test)
@@ -571,9 +576,10 @@ normalizar <- function(dataList) {
     # Normalizamos los datos
     dataList$X_train <- (dataList$X_train - dataList$minXTrain) / (dataList$maxXTrain - dataList$minXTrain)
     dataList$X_test <- (dataList$X_test - dataList$minXTest) / (dataList$maxXTest - dataList$minXTest)
+    
   }
 
-  # Calculamos el máximo y el mínimo de la variable objetivo para proceder a la normalización
+  # Calculamos el máximo y el mínimo de la variable objetivo
   dataList$maxYTrain = max(dataList$Y_train)
   dataList$minYTrain = min(dataList$Y_train)
   dataList$maxYTest = max(dataList$Y_test)
@@ -589,9 +595,9 @@ normalizar <- function(dataList) {
 
 ```
 
-```{r modelo_lstm, message=FALSE, warning=FALSE}
+```{r crear_modelo_lstm, message=FALSE, warning=FALSE}
 
-crear_modelo_lstm <- function(batch_size, units) {
+crear_modelo_lstm <- function(batch_size, n, units) {
   
   # Importamos la librería keras para crear el modelo
   library(keras)
@@ -619,15 +625,12 @@ crear_modelo_lstm <- function(batch_size, units) {
 
 ```
 
-```{r train_lstm, message=FALSE, warning=FALSE}
+```{r entrenar_modelo_lstm, message=FALSE, warning=FALSE}
 
 entrenar_modelo_lstm <- function(modelo, batch_size, epochs) {
   
-  # Determinamos el número de épocas
-  #epochs = 1
-  
   if(typeof(X_train)=="list") {
-    #X_train contiene varias columnas
+    # X_train contiene varios predictores
     
     # Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
     num = batch_size*as.integer(nrow(X_train)/batch_size)
@@ -639,7 +642,7 @@ entrenar_modelo_lstm <- function(modelo, batch_size, epochs) {
     dim(X_train) <- c(dim(X_train)[1],1,dim(X_train)[2])
   
   } else {
-    # X_train es un Array
+    # X_train contiene un único predictor
   
     # Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
     num = batch_size*as.integer(length(X_train)/batch_size)
@@ -652,18 +655,19 @@ entrenar_modelo_lstm <- function(modelo, batch_size, epochs) {
 
   }
   
+  # Entrenamos el modelo
   modelo %>% fit(X_train, Y_train[1:num], batch_size = batch_size, epochs = epochs, verbose = 1, shuffle = FALSE)
   
 }
 
 ```
 
-```{r test_lstm, message=FALSE, warning=FALSE}
+```{r predicciones_modelo_lstm, message=FALSE, warning=FALSE}
 
 predicciones_modelo_lstm <- function(modelo, batch_size) {
   
   if(typeof(X_test)=="list") {
-    #X_test contiene varias columnas
+    # X_test contiene varios predictores
     
     # Truncamos las observaciones de X_test e Y_test para coincidir con el batch_size
     num = as.integer(nrow(X_test)/batch_size)*batch_size
@@ -675,7 +679,7 @@ predicciones_modelo_lstm <- function(modelo, batch_size) {
     dim(X_test) <- c(dim(X_test)[1],1,dim(X_test)[2])
   
   } else {
-    # X_test es un Array
+    # X_test contiene un único predictor
   
     # Truncamos las observaciones de X_test e Y_test para coincidir con el batch_size
     num = as.integer(length(X_test)/batch_size)*batch_size
@@ -688,6 +692,7 @@ predicciones_modelo_lstm <- function(modelo, batch_size) {
   
   }
   
+  # Usamos el modelo para realizar las predicciones
   Y_pred <- modelo %>% predict(X_test, batch_size = batch_size)
   
   return(Y_pred)
@@ -696,21 +701,12 @@ predicciones_modelo_lstm <- function(modelo, batch_size) {
 
 ```
 
-```{r evaluacion_lstm}
+```{r evaluar_modelo_lstm}
 
 evaluar_modelo_lstm <- function() {
   
+  # Evaluamos el modelo calculando la raíz cuadrada del error cuadrático medio (RMSE)
   return(sqrt(mean((Y_pred - Y_test[1:length(Y_pred)])^2)))
-  
-  # library(ggplot2)
-  # 
-  # pos <- c(1:length(Y_pred))
-  # result <- cbind(pos, Y_test[1:length(Y_pred)])
-  # result <- cbind(result, Y_pred)
-  # colnames(result) <- c("pos","Y_test","Y_pred")
-  # result <- as.data.frame(result)
-  # 
-  # ggplot(data = result, aes(pos)) + geom_line(aes(y = Y_test, colour = "Y_test")) + geom_line(aes(y = Y_pred, colour = "Y_pred"))
   
 }
 
@@ -737,19 +733,19 @@ comparar_prediccion<-function(Y_test,Y_pred) {
 
 ```
 
-```{r model_bench, message=FALSE, warning=FALSE}
+```{r benchmark_modelo_lstm, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
 c = 8 # Dióxido de nitrógeno
-estacion = 28079004
-predictores = c(1,2,3) # Las variables predictoras serán 1, 3, 5 y 7
-batch_size_valores = c(1,7,30)
-units_valores = c(1,8,16,32,64)
-epochs_valores = c(1,5,10)
+estacion = 28079004 # Plaza de España
+predictores = c(1,2,3) # Numero de variables predictoras a considerar
+batch_size_valores = c(1,7,30) # batch_sizes a evaluar
+units_valores = c(1,8,16,32,64) # Numero de units a evaluar
+epochs_valores = c(1,5,10) # Número de épocas a evaluar
 
 resultados <- data.frame()
 
 for (k in predictores) {
-  
+    
   # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
   n = switch(k,1,9,10)
   
@@ -759,16 +755,24 @@ for (k in predictores) {
         
         cat("Evaluando modelo LSTM con c:",c,"predictores:",k,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
         
+        # Preparamos los datos de entrenamiento y prueba
         returnList <- preparar_datos(c, estacion, k)
         
         X_train <- returnList$X_train
         Y_train <- returnList$Y_train
         X_test <- returnList$X_test
         Y_test <- returnList$Y_test
-          
-        modelo <- crear_modelo_lstm(batch_size, units)
+        
+        # Creamos el modelo LSTM  
+        modelo <- crear_modelo_lstm(batch_size, n, units)
+        
+        # Entrenamos el modelo con X_train e Y_train (variables globales)
         entrenar_modelo_lstm(modelo = modelo, batch_size, epochs)
+        
+        # Predecimos los resultados para X_test (variable global)
         Y_pred <- predicciones_modelo_lstm(modelo = modelo, batch_size)
+        
+        # Evaluamos el modelo calculando el RMSE
         rmse = evaluar_modelo_lstm()
         
         # Revertimos la normalización de los datos de test
@@ -776,13 +780,56 @@ for (k in predictores) {
         Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
         print(comparar_prediccion(Y_test,Y_pred))
         
+        # Almacenamos los resultados de los hiperparámetros evaluados en el fichero "resultados.csv"
         resultados <- rbind(resultados, c(c,k,batch_size,units,epochs,rmse))
         colnames(resultados) <- c("c","k","batch_size","units","epochs","rmse")
-        write.csv2(resultados, file = "resultados.csv", row.names= FALSE, col.names = TRUE)
+        write.csv2(resultados, file = "lstm_resultados_bench", row.names= FALSE, col.names = TRUE)
         
       }
     }
   }
 }
+
+```
+
+```{r modelo_lstm, message=FALSE, warning=FALSE}
+
+# Establecemos los hiperparámetros del modelo LSTM
+cod_contaminante = 8 # Dióxido de nitrógeno
+cod_estacion = 28079004 # Plaza de España
+predictores = 3 # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
+n = switch(predictores,1,9,10) # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+batch_size = 30
+units = 32
+epochs = 10
+        
+cat("Predicción mediante modelo LSTM.\n Contaminante:",cod_contaminante,"predictores:",predictores,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
+
+# Preparamos los datos de entrenamiento y prueba
+returnList <- preparar_datos(cod_contaminante, cod_estacion, predictores)
+
+X_train <- returnList$X_train
+Y_train <- returnList$Y_train
+X_test <- returnList$X_test
+Y_test <- returnList$Y_test
+
+# Creamos el modelo LSTM  
+modelo <- crear_modelo_lstm(batch_size, n, units)
+
+# Entrenamos el modelo con X_train e Y_train (variables globales)
+entrenar_modelo_lstm(modelo = modelo, batch_size, epochs)
+
+# Predecimos los resultados para X_test (variable global)
+Y_pred <- predicciones_modelo_lstm(modelo = modelo, batch_size)
+
+# Evaluamos el modelo calculando el RMSE
+rmse = evaluar_modelo_lstm()
+
+# Revertimos la normalización de los datos de test
+Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+
+# Comparamos los datos reales y las predicciones con un gráfico de líneas 
+print(comparar_prediccion(Y_test,Y_pred))
 
 ```

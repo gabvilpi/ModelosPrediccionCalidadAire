@@ -654,6 +654,36 @@ crear_modelo_lstm <- function(batch_size, n, units) {
 
 ```
 
+```{r crear_modelo_cnn, message=FALSE, warning=FALSE}
+
+crear_modelo_cnn <- function(batch_size, n, filters) {
+  
+  # Importamos la librería keras para crear el modelo
+  library(keras)
+  
+  # Destroys the current TF graph and creates a new one. Useful to avoid clutter from old models / layers.
+  k_clear_session()
+  
+  # Creamos un modelo secuencial como una pila lineal de capas
+  modelo <- keras_model_sequential()
+  
+  # Añadimos las capas al modelo
+  modelo %>%
+    layer_conv_1d(filters = filters, kernel_size = 1, activation = "softmax", batch_input_shape = c(batch_size, 1, n)) %>%
+    layer_conv_1d(filters = filters, kernel_size = 1, activation = "softmax") %>% 
+    #layer_max_pooling_1d(pool_size = 1) %>% 
+    layer_global_max_pooling_1d() %>%
+    layer_dense(units = 1)
+  
+  # Compilamos el modelo
+  modelo %>% compile(loss = 'mean_squared_error', optimizer = 'RMSprop')
+  
+  return(modelo)
+
+}
+
+```
+
 ```{r entrenar_modelo_mlp, message=FALSE, warning=FALSE}
 
 entrenar_modelo_mlp <- function(modelo, batch_size, epochs) {
@@ -946,9 +976,68 @@ for (k in predictores) {
 
 ```
 
+```{r benchmark_modelo_cnn, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+c = 8 # Dióxido de nitrógeno
+estacion = 28079004 # Plaza de España
+predictores = c(1,2,3) # Numero de variables predictoras a considerar
+batch_size_valores = c(1,7,30) # batch_sizes a evaluar
+filters_valores = c(1,8,16,32,64) # Numero de units a evaluar
+epochs_valores = c(1,5,10) # Número de épocas a evaluar
+
+resultados <- data.frame()
+
+for (k in predictores) {
+    
+  # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+  n = switch(k,1,9,10)
+  
+  for (batch_size in batch_size_valores) {
+    for (filters in filters_valores) {
+      for (epochs in epochs_valores) {
+        
+        cat("Evaluando modelo CNN con c:",c,"predictores:",k,"batch_size:",batch_size,"filters:",filters,"epochs:",epochs,"\n")
+        
+        # Preparamos los datos de entrenamiento y prueba
+        returnList <- preparar_datos(c, estacion, k)
+        
+        X_train <- returnList$X_train
+        Y_train <- returnList$Y_train
+        X_test <- returnList$X_test
+        Y_test <- returnList$Y_test
+        
+        # Creamos el modelo CNN  
+        modelo <- crear_modelo_cnn(batch_size, n, filters)
+        
+        # Entrenamos el modelo con X_train e Y_train (variables globales)
+        entrenar_modelo_lstm(modelo = modelo, batch_size, epochs)
+        
+        # Predecimos los resultados para X_test (variable global)
+        Y_pred <- predicciones_modelo_lstm(modelo = modelo, batch_size)
+        
+        # Evaluamos el modelo calculando el RMSE
+        rmse = evaluar_modelo()
+        
+        # Revertimos la normalización de los datos de test
+        Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+        Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+        comparar_prediccion(Y_test,Y_pred)
+        
+        # Almacenamos los resultados de los hiperparámetros evaluados en el fichero "lstm_resultados_bench.csv"
+        resultados <- rbind(resultados, c(c,k,batch_size,filters,epochs,rmse))
+        colnames(resultados) <- c("c","k","batch_size","filters","epochs","rmse")
+        write.csv2(resultados, file = "cnn_resultados_bench.csv", row.names= FALSE, col.names = TRUE)
+        
+      }
+    }
+  }
+}
+
+```
+
 ```{r modelo_mlp, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
-# Establecemos los hiperparámetros del modelo LSTM
+# Establecemos los hiperparámetros del modelo MLP
 cod_contaminante = 8 # Dióxido de nitrógeno
 cod_estacion = 28079004 # Plaza de España
 predictores = 3 # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
@@ -988,7 +1077,7 @@ comparar_prediccion(Y_test,Y_pred)
 
 ```
 
-```{r modelo_lstm, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+```{r modelo_lstm, message=FALSE, warning=FALSE}
 
 # Establecemos los hiperparámetros del modelo LSTM
 cod_contaminante = 8 # Dióxido de nitrógeno
@@ -1011,6 +1100,48 @@ Y_test <- returnList$Y_test
 
 # Creamos el modelo LSTM  
 modelo <- crear_modelo_lstm(batch_size, n, units)
+
+# Entrenamos el modelo con X_train e Y_train (variables globales)
+entrenar_modelo_lstm(modelo = modelo, batch_size, epochs)
+
+# Predecimos los resultados para X_test (variable global)
+Y_pred <- predicciones_modelo_lstm(modelo = modelo, batch_size)
+
+# Evaluamos el modelo calculando el RMSE
+rmse = evaluar_modelo()
+
+# Revertimos la normalización de los datos de test
+Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+
+# Comparamos los datos reales y las predicciones con un gráfico de líneas 
+comparar_prediccion(Y_test,Y_pred)
+
+```
+
+```{r modelo_cnn, message=FALSE, warning=FALSE}
+
+# Establecemos los hiperparámetros del modelo CNN
+cod_contaminante = 8 # Dióxido de nitrógeno
+cod_estacion = 28079004 # Plaza de España
+predictores = 3 # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
+n = switch(predictores,1,9,10) # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+batch_size = 1
+filters = 128
+epochs = 10
+        
+cat("Predicción mediante modelo CNN\n Contaminante:",cod_contaminante,"predictores:",predictores,"batch_size:",batch_size,"filters:",filters,"epochs:",epochs,"\n")
+
+# Preparamos los datos de entrenamiento y prueba
+returnList <- preparar_datos(cod_contaminante, cod_estacion, predictores)
+
+X_train <- returnList$X_train
+Y_train <- returnList$Y_train
+X_test <- returnList$X_test
+Y_test <- returnList$Y_test
+
+# Creamos el modelo CNN  
+modelo <- crear_modelo_cnn(batch_size, n, filters)
 
 # Entrenamos el modelo con X_train e Y_train (variables globales)
 entrenar_modelo_lstm(modelo = modelo, batch_size, epochs)

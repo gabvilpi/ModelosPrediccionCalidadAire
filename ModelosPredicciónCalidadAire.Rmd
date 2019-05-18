@@ -279,13 +279,14 @@ datos$laborable<-as.numeric(levels(datos$laborable)[datos$laborable])
 
 ```
 
-- Se imputa a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
+- Se imputa a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados. Para los datos vacíos de las medidas de calidad del aire, se les imputa la media de los valores recogidos para dicho contaminante en esa misma franja horaria y en el caso de los datos vacíos en las mediciones de climatología, se les imputa la media de los valores recogidos ese mismo día en el resto de años.
 
 ```{r imputación_valores, message=FALSE, warning=FALSE}
 
+# Medidas de contaminación: imputamos a los datos vacíos el valor medio recogido para ese contaminante en cada franja horaria
 for (i in levels(datos$contaminante)) {
   for (j in levels(datos$estacion)) {
-    for (k in colnames(datos)[4:35]) {
+    for (k in colnames(datos)[4:27]) {
       temp<-is.na(datos[[k]])
       if (nrow(datos[temp & datos$contaminante==i & datos$estacion==j,][k]) != 0) {
         datos[temp & datos$contaminante==i & datos$estacion==j,][k] <- mean(data.matrix(datos[datos$contaminante==i & datos$estacion==j,][k]), na.rm = TRUE)
@@ -293,6 +294,30 @@ for (i in levels(datos$contaminante)) {
       rm(temp)
     }
   }
+}
+
+# Medidas de climatología: imputamos a los datos vacíos el valor medio recogido ese mismo día en el resto de años
+for (i in colnames(datos)[28:35]) {
+    temp<-is.na(datos[[i]])
+    unique = unique(datos[temp,2])
+    if (length(unique)!=0) {
+        for (j in 1:length(unique)) {
+            suma = 0
+            num = 0
+            fecha=unique[j]
+            for (k in 2013:2018) {
+                replacement = paste0(k, "-")
+                fecha=gsub("\\d\\d\\d\\d-*", replacement,fecha)
+                valor = datos[datos$fecha==fecha,i][1]
+                if (!(is.na(valor))) {
+                    suma = suma + valor
+					num = num + 1
+                }
+            }
+			media = suma / num
+			datos[temp&datos$fecha==unique[j],i]<-media
+        }
+    }
 }
 
 # Guardamos los datos
@@ -348,7 +373,7 @@ write.csv(datos, file = "datos.csv", row.names = FALSE)
 
 ```
 
-Una vez integrados y preparados los datos necesarios para construir el modelo, es conveniente normalizar los datos. La normalización consiste en modificar los datos para lograr que estén en una escala de valores equivalente, de forma que se simplifique la comparación entre ellos. Si los datos no se normalizan, los métodos de minería de datos que utilicemos tenderán a quedar sesgados debido a la influencia de los atributos con valores más altos, distorsionando el resultado del modelo.
+Una vez integrados y preparados los datos necesarios para construir el modelo, es conveniente normalizar los datos. La normalización consiste en modificar los datos para lograr que estén en una escala de valores equivalente, de forma que se simplifique la comparación entre ellos. Si los datos no se normalizan, los métodos de minería de datos que se utilicen tenderán a quedar sesgados debido a la influencia de los atributos con valores más altos, distorsionando el resultado del modelo.
 
 En este caso se hará uso de el método de "Normalización por la diferencia". Este método intenta compensar el efecto que provoca la distancia del valor que se trata con respecto al máximo de los valores observados. Su fórmula de cálculo es:
 
@@ -413,7 +438,7 @@ normalizar <- function(dataList) {
 
 Por último, se establece una función para preparar los datos de entrenamiento y test con los que alimentar y probar los modelos. 
 
-La función tiene como entrada el código del contaminante seleccionado para el análisis, el código de la estación meteorológica de la que seleccionar los datos y el número de predictores a utilizar para la predicción (1: Sólo medidas de contaminación, 2: Medidas de contaminación y climatología y 3: Medidas de contaminación, climatología y calendario laboral).
+La función tiene como entrada el código del contaminante seleccionado para el análisis, el código de la estación meteorológica de la que seleccionar los datos y el número de predictores a utilizar en la predicción (1: Sólo medidas de contaminación, 2: Medidas de contaminación y climatología y 3: Medidas de contaminación, climatología y calendario laboral).
 
 Las observaciones del contaminante se almacenan como series temporales en X e Y, es decir, el valor de Y[i] se corresponde a la siguiente medición a X[i]. Para realizar la predicción de los niveles de alta contaminación, se ha seleccionado la medida máxima diaria recogida para el contaminante y estación seleccionados.
 

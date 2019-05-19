@@ -579,7 +579,7 @@ for (i in levels(datos$contaminante)) {
 
 ```
 
-### 1.4. Caracterización del clima de Madrid
+## 2. Caracterización del clima de Madrid
 
 El clima de la ciudad de Madrid según la clasificación climática de Köppen es clima templado con verano seco y caluroso (Csa).
 
@@ -630,7 +630,7 @@ ggplot(data = clima, aes(x = as.Date(cut(clima$fecha, breaks = "month")), y = pr
 
 Durante el año 2018, el mes de mayor acumulación de lluvias fue marzo seguido de abril y mayo.
 
-### 1.5. Modelo de predicción de la calidad del aire de Madrid
+## 3. Modelo de predicción de la calidad del aire de Madrid
 
 ```{r cargar_y_preparar_datos, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
@@ -945,7 +945,7 @@ comparar_prediccion<-function(Y_test,Y_pred, titulo) {
 
 ```
 
-#### 1.5.1. Modelo basado en MLP (Multilayer perceptron)
+### 3.1. Modelo basado en MLP (Multilayer perceptron)
 
 ```{r crear_modelo_mlp, message=FALSE, warning=FALSE}
 
@@ -1096,7 +1096,7 @@ comparar_prediccion(Y_test,Y_pred,titulo)
 
 ```
 
-#### 1.5.2. Modelo basado en LSTM (Long Short-Term Memory)
+### 3.2. Modelo basado en LSTM (Long Short-Term Memory)
 
 ```{r crear_modelo_lstm, message=FALSE, warning=FALSE}
 
@@ -1248,7 +1248,7 @@ comparar_prediccion(Y_test,Y_pred,titulo)
 
 ```
 
-#### 1.5.3. Modelo basado en CNN (Convolutional Neural Network)
+### 3.3. Modelo basado en CNN (Convolutional Neural Network)
 
 ```{r crear_modelo_cnn, message=FALSE, warning=FALSE}
 
@@ -1399,7 +1399,7 @@ comparar_prediccion(Y_test,Y_pred,titulo)
 
 ```
 
-#### 1.5.4. Modelo basado en SVM (Support Vector Machines)
+### 3.4. Modelo basado en SVM (Support Vector Machines)
 
 ```{r benchmark_modelo_svm, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 

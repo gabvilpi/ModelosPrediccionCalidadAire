@@ -31,9 +31,6 @@ A continuación se realiza la carga recursiva de los datos de calidad del aire en
 setwd("Datos/Contaminación")
 
 # Listamos los ficheros a cargar
-# ficheros <- list.files(pattern = ".*.txt")
-# ficheros <- list.files(pattern = "ene_mo01.txt")
-# ficheros <- list.files(pattern = "oct_mo17")
 ficheros <- list.files(pattern = ".*mo1[3-8].txt")
 
 
@@ -71,10 +68,14 @@ for (i in 6:29) {
 }
 
 # Corregimos el tipo de dato de cada columna
-calidadAire<-transform(calidadAire, estacion=as.factor(estacion), contaminante=as.factor(contaminante), tecnica=as.factor(tecnica), periodo=as.factor(periodo), fecha=as.Date(fecha, format("%y/%m/%d")), hora1=as.numeric(hora1), hora2=as.numeric(hora2), hora3=as.numeric(hora3), hora4=as.numeric(hora4), hora5=as.numeric(hora5), hora6=as.numeric(hora6), hora7=as.numeric(hora7), hora8=as.numeric(hora8), hora9=as.numeric(hora9), hora10=as.numeric(hora10), hora11=as.numeric(hora11), hora12=as.numeric(hora12), hora13=as.numeric(hora13), hora14=as.numeric(hora14), hora15=as.numeric(hora15), hora16=as.numeric(hora16), hora17=as.numeric(hora17), hora18=as.numeric(hora18), hora19=as.numeric(hora19), hora20=as.numeric(hora20), hora21=as.numeric(hora21), hora22=as.numeric(hora22), hora23=as.numeric(hora23), hora24=as.numeric(hora24))
+# calidadAire<-transform(calidadAire, estacion=as.factor(estacion), contaminante=as.factor(contaminante), tecnica=as.factor(tecnica), periodo=as.factor(periodo), fecha=as.Date(fecha, format("%y/%m/%d")), hora1=as.numeric(hora1), hora2=as.numeric(hora2), hora3=as.numeric(hora3), hora4=as.numeric(hora4), hora5=as.numeric(hora5), hora6=as.numeric(hora6), hora7=as.numeric(hora7), hora8=as.numeric(hora8), hora9=as.numeric(hora9), hora10=as.numeric(hora10), hora11=as.numeric(hora11), hora12=as.numeric(hora12), hora13=as.numeric(hora13), hora14=as.numeric(hora14), hora15=as.numeric(hora15), hora16=as.numeric(hora16), hora17=as.numeric(hora17), hora18=as.numeric(hora18), hora19=as.numeric(hora19), hora20=as.numeric(hora20), hora21=as.numeric(hora21), hora22=as.numeric(hora22), hora23=as.numeric(hora23), hora24=as.numeric(hora24))
+
+# Corregimos el tipo de dato de cada columna
+calidadAire <- transform(calidadAire, estacion=as.factor(estacion), contaminante=as.factor(contaminante), tecnica=as.factor(tecnica), periodo=as.factor(periodo), fecha=as.Date(fecha, format("%y/%m/%d")))
+calidadAire[,6:29] <- sapply(calidadAire[,6:29], as.numeric)
 
 # Ordenamos el data frame por fecha, estación y contaminante
-calidadAire<-calidadAire[order(calidadAire$fecha, calidadAire$estacion, calidadAire$contaminante),]
+calidadAire <- calidadAire[order(calidadAire$fecha, calidadAire$estacion, calidadAire$contaminante),]
 
 # Guardamos los datos
 write.csv(calidadAire, file = "calidadAire.csv", row.names = FALSE)
@@ -90,7 +91,7 @@ En el siguiente trozo de código se procede a realizar la carga recursiva de los 
 setwd("Datos/Clima")
 
 # Listamos los ficheros a cargar
-ficheros <- list.files(pattern = "weather.*.csv")
+ficheros <- list.files(pattern = "weather_201[3-8].*.csv")
 
 # Determinamos el nombre de las columnas
 columnas <- c("id","altitud","dir","fecha","horaPresMax","horaPresMin","horaRacha","horaTmax","horaTmin","indicativo","nombre","prec","presMax","presMin","provincia","racha","tmax","tmed","tmin","velMedia")
@@ -188,7 +189,7 @@ no metánicos (hexano)")
 
 j=1
 
-# Boxplot dióxido de nitrógeno NO2
+# Boxplot mediciones de calidadAire
 for (i in levels(calidadAire$contaminante)){
   boxplot(calidadAire[calidadAire$contaminante==i,6:29], main=contaminante[j], outline = FALSE)
   j=j+1
@@ -237,7 +238,7 @@ summary(calendario)
 
 #### 1.3.1. Seleccionar e integrar los datos
 
-A continuación se seleccionan los datos deseados para constuir el modelo de predicción de la calidad del aire. Los datos seleccionados se integraran en un nuevo data frame uniendo todos los datos de una misma fecha. 
+A continuación se seleccionan los datos deseados para constuir el modelo de predicción de la calidad del aire. Los datos seleccionados se integrarán en un nuevo data frame uniendo todos los datos de una misma fecha. 
 
 Del data frame "calidadAire" se seleccionarán los datos correspondientes a la fecha de la medida, la estación, el contaminante medido y las 24 medidas horarias. Del data frame "clima" se seleccionará la fecha y los datos de medidas de precipitación, presión máxima y mínima, temperatura máxima, mínima y media, y velocidad media y máxima del viento. Por último, del data frame "calendario" se seleccionará la fecha y si ese dia es fesitivo o no.
 
@@ -246,32 +247,1270 @@ Del data frame "calidadAire" se seleccionarán los datos correspondientes a la fe
 # Seleccionamos los datos del data frame calidadAire y creamos un data frame nuevo
 datos <- calidadAire[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24")]
 
-# Uniremos los data frames como data.table
+# Uniremos los data frames como data table
 require(data.table)
 setDT(datos)
-setDT(calendario)
-setDT(clima)
 
 # Unimos los datos seleccionados del data frame clima según la fecha de las mediciones
 datos<-datos[clima[,c("fecha","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia")], on = "fecha"]
 
 # Unimos los datos seleccionados del data frame calendario según la fecha de las mediciones
-datos<-datos[calendario[,c("fecha","tipoDia")], on = "fecha"]
+datos<-datos[calendario[calendario$fecha<'2019-01-01',c("fecha","tipoDia")], on = "fecha"]
+
+# Reconvertimos la data table en data frame
+datos<-as.data.frame(datos)
 
 ```
 
 Una vez integrados los datos en el data frame "datos" se realizarán las siguientes transformaciones:
 
-- Sustituimos el campo festivo por laborable y lo codificamos como 0|1 (festivo = 0, sabado = 0, domingo = 1, laborable = 1)
-- Normalización de todas las medidas en un rango [0-1]
+- Se sustituye el nombre del campo "festivo" por "laborable" y lo codificamos como 0|1 (festivo = 0, sabado = 0, domingo = 1, laborable = 1)
 
-```{r transformación_normalizacion, warning=FALSE, message=FALSE}
+```{r codificación_laborable, warning=FALSE, message=FALSE}
 
-# Sustituimos el campo festivo por laborable
+# Sustituimos el nombre del campo "festivo" por "laborable"
 colnames(datos)[36]<-"laborable"
 
 # Codificamos el campo laborable
 levels(datos$laborable)<-c(1,0,0,0)
 
+# Cambiamos el tipo de dato del campo laborable a numérico
+datos$laborable<-as.numeric(levels(datos$laborable)[datos$laborable])
+
 ```
+
+- Se imputa a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados. Para los datos vacíos de las medidas de calidad del aire, se les imputa la media de los valores recogidos para dicho contaminante en esa misma franja horaria y en el caso de los datos vacíos en las mediciones de climatología, se les imputa la media de los valores recogidos ese mismo día en el resto de años.
+
+```{r imputación_valores, message=FALSE, warning=FALSE}
+
+# Medidas de contaminación: imputamos a los datos vacíos el valor medio recogido para ese contaminante en cada franja horaria
+for (i in levels(datos$contaminante)) {
+  for (j in levels(datos$estacion)) {
+    for (k in colnames(datos)[4:27]) {
+      temp<-is.na(datos[[k]])
+      if (nrow(datos[temp & datos$contaminante==i & datos$estacion==j,][k]) != 0) {
+        datos[temp & datos$contaminante==i & datos$estacion==j,][k] <- mean(data.matrix(datos[datos$contaminante==i & datos$estacion==j,][k]), na.rm = TRUE)
+      }
+      rm(temp)
+    }
+  }
+}
+
+# Medidas de climatología: imputamos a los datos vacíos el valor medio recogido ese mismo día en el resto de años
+for (i in colnames(datos)[28:35]) {
+    temp<-is.na(datos[[i]])
+    unique = unique(datos[temp,2])
+    if (length(unique)!=0) {
+        for (j in 1:length(unique)) {
+            suma = 0
+            num = 0
+            fecha=unique[j]
+            for (k in 2013:2018) {
+                replacement = paste0(k, "-")
+                fecha=gsub("\\d\\d\\d\\d-*", replacement,fecha)
+                valor = datos[datos$fecha==fecha,i][1]
+                if (!(is.na(valor))) {
+                    suma = suma + valor
+					num = num + 1
+                }
+            }
+			media = suma / num
+			datos[temp&datos$fecha==unique[j],i]<-media
+        }
+    }
+}
+
+# Guardamos los datos
+write.csv(datos, file = "datos.csv", row.names = FALSE)
+
+```
+
+Realizamos una nueva exploración de los datos una vez imputado a los valores perdidos (NA) el valor de la media aritmética del resto de valores observados
+
+```{r exploración_datos, message=FALSE, warning=FALSE}
+j=1
+
+# Boxplot datos contaminación
+for (i in levels(datos$contaminante)){
+  boxplot(datos[datos$contaminante==i,4:27], main=contaminante[j], outline = FALSE)
+  j=j+1
+}
+
+# Gráficos
+library(ggplot2)
+
+# Precipitaciones
+ggplot(data = datos, aes(fecha, prec)) + geom_line() + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Precipitaciones en 2018 (mm)")
+
+# Presión atmosférica
+ggplot(data = datos, aes(fecha)) + geom_line(aes(y = presMax, colour = "presMax")) + geom_line(aes(y = presMin, colour = "presMin")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Presión max y min en 2018 (hPa)")
+
+# Temperatura
+ggplot(data = datos, aes(fecha)) + geom_line(aes(y = tmax, colour = "tmax")) + geom_line(aes(y = tmed, colour = "tmed")) + geom_line(aes(y = tmin, colour = "tmin")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Temperatura máxima, media y mínima en 2018 (ºC)")
+
+# Viento
+ggplot(data = datos, aes(fecha)) + geom_line(aes(y = racha, colour = "racha")) + geom_line(aes(y = velMedia, colour = "velMedia")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Velocidad máxima y media del viento en 2018 (m/s)")
+```
+
+- Se incluye una columna con la media y otra con el máximo de las mediciones horarias de contaminación en esa estación para cada día
+
+```{r media_y_max_diario_contaminación}
+
+# Calculamos el nivel medio de contaminación en cada estación para cada día
+datos <- transform(datos, media = rowMeans(data.matrix(datos[,4:27])))
+
+# Cargamos la librería matrixStats para usar la función rowMaxs
+library(matrixStats)
+
+# Calculamos el nivel máximo de contaminación en cada estación para cada día
+datos <- transform(datos, maximo = rowMaxs(data.matrix(datos[,4:27])))
+
+# Reordenamos las columnas
+datos<-datos[,c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","maximo","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")]
+
+# Guardamos los datos
+write.csv(datos, file = "datos.csv", row.names = FALSE)
+
+```
+
+Una vez integrados y preparados los datos necesarios para construir el modelo, es conveniente normalizar los datos. La normalización consiste en modificar los datos para lograr que estén en una escala de valores equivalente, de forma que se simplifique la comparación entre ellos. Si los datos no se normalizan, los métodos de minería de datos que se utilicen tenderán a quedar sesgados debido a la influencia de los atributos con valores más altos, distorsionando el resultado del modelo.
+
+En este caso se hará uso de el método de "Normalización por la diferencia". Este método intenta compensar el efecto que provoca la distancia del valor que se trata con respecto al máximo de los valores observados. Su fórmula de cálculo es:
+
+$$z_i = \frac {x_i - x_{min}} {x_{max} - x_{min}} $$
+
+A continuación preparamos una función para normalizar los datos antes de entrenar nuestro modelo. La función tendrá como entrada una lista con los datos X e Y seleccionados para entrenar o testear el modelo. La función se encargará de normalizar los datos mediante la técnica de "Normalización por la diferencia" y devolverá los datos X e Y normalizados y los valores máximo y mínimo para que sea posible revertir el proceso desnormalizando los datos.
+
+```{r normalizar, message=FALSE, warning=FALSE}
+
+normalizar <- function(dataList) {
+  
+  # Normalizamos los datos entre 0 y 1
+  
+  if (typeof(dataList$X_train) == "list") {
+    # X_train y X_test contienen varios predictores
+    
+    # Calculamos los máximos y mínimos de cada predictor
+    dataList$maxXTrain = sapply(dataList$X_train, max)
+    dataList$minXTrain = sapply(dataList$X_train, min)
+    dataList$maxXTest = sapply(dataList$X_test, max)
+    dataList$minXTest = sapply(dataList$X_test, min)
+    
+    # Normalizamos cada columna
+    for (i in 1:length(dataList$X_train)) {
+      
+      dataList$X_train[,i] <- (dataList$X_train[,i] - dataList$minXTrain[i]) / (dataList$maxXTrain[i] - dataList$minXTrain[i])
+      dataList$X_test[,i] <- (dataList$X_test[,i] - dataList$minXTest[i]) / (dataList$maxXTest[i] - dataList$minXTest[i])
+      
+    }
+    
+  } else {
+    
+    # X_train y X_test contienen un único predictor
+    
+    # Calculamos el máximo y el mínimo del predictor
+    dataList$maxXTrain = max(dataList$X_train)
+    dataList$minXTrain = min(dataList$X_train)
+    dataList$maxXTest = max(dataList$X_test)
+    dataList$minXTest = min(dataList$X_test)
+    
+    # Normalizamos los datos
+    dataList$X_train <- (dataList$X_train - dataList$minXTrain) / (dataList$maxXTrain - dataList$minXTrain)
+    dataList$X_test <- (dataList$X_test - dataList$minXTest) / (dataList$maxXTest - dataList$minXTest)
+    
+  }
+
+  # Calculamos el máximo y el mínimo de la variable objetivo
+  dataList$maxYTrain = max(dataList$Y_train)
+  dataList$minYTrain = min(dataList$Y_train)
+  dataList$maxYTest = max(dataList$Y_test)
+  dataList$minYTest = min(dataList$Y_test)
+  
+  # Normalizamos los datos
+  dataList$Y_train <- (dataList$Y_train - dataList$minYTrain) / (dataList$maxYTrain - dataList$minYTrain)
+  dataList$Y_test <- (dataList$Y_test - dataList$minYTest) / (dataList$maxYTest - dataList$minYTest)
+  
+  return(dataList)
+  
+}
+
+```
+
+Por último, se establece una función para preparar los datos de entrenamiento y test con los que alimentar y probar los modelos. 
+
+La función tiene como entrada el código del contaminante seleccionado para el análisis, el código de la estación meteorológica de la que seleccionar los datos y el número de predictores a utilizar en la predicción (1: Sólo medidas de contaminación, 2: Medidas de contaminación y climatología y 3: Medidas de contaminación, climatología y calendario laboral).
+
+Las observaciones del contaminante se almacenan como series temporales en X e Y, es decir, el valor de Y[i] se corresponde a la siguiente medición a X[i]. Para realizar la predicción de los niveles de alta contaminación, se ha seleccionado la medida máxima diaria recogida para el contaminante y estación seleccionados.
+
+Los sets de entrenamiento y test se dividen en una proporción del 80% y 20% respectivamente. Después se normalizan todos los datos mediante la función creada anteriormente y se devuelven en una lista que contiene X_test, Y_test, X_train e Y_train y sus respectivos máximos y mínimos para que sea posible revertir la normalización (maxXTrain, maxXTest, maxYTrain, maxYTest, minXtrain, minXTest, minYTrain, minYTest).
+
+```{r preparar_datos, message=FALSE, warning=FALSE}
+
+preparar_datos <- function(c, estacion, predictores, pred_clima) {
+  
+  # c: Código del contaminante seleccionado
+  # estacion: Código de la estación a analizar
+  # predictores: 1 sólo medidas de contaminación, 2 medidas de contaminación y climatología, 3 medidas de contaminación, climatología y calendario laboral
+  # pred_clima: TRUE: Se usan como variables predictoras los datos del clima del día en que se quiere predecir la contaminación (uso de predicción del clima)
+  # pred_clima: FALSE: Se usan como variables predictoras los datos del clima del día anterior al que se quiere predecir la contaminación
+  
+  if (is.null(c)) stop("El parámetro c (código de contaminante) es obligatorio.")
+  if (is.null(estacion)) stop("El parámetro estación es obligatorio.")
+  if (is.null(predictores)) stop("El parámetro preditores es obligatorio.")
+  if (is.null(pred_clima)) stop("El parámetro pred_clima es obligatorio")
+  
+  if (predictores == 1) {
+    
+    # Sólo se utilizan los datos de medidas de contaminación para el contaminante c
+    
+    # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i] la siguiente medición a X[i]
+    X <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
+    
+    Y <- X[-1]
+    X <- X[-length(X)]
+    
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
+    sample<-c(1:(0.8*length(X)))
+        
+    X_train <- X[sample]
+    Y_train <- Y[sample]
+        
+    X_test <- X[-sample]
+    Y_test <- Y[-sample]
+    
+  } else if (predictores == 2) {
+    
+    # Se utilizan los datos de medidas de contaminación y las medidas climatológicas
+    
+    if (pred_clima==TRUE) {
+
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del mismo día en que deseamos predecir la contaminación (uso de predicción del clima)
+      X1 <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
+      X2 <- datos[datos$contaminante==c&datos$estacion==estacion,c("prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
+      
+      Y <- X1[-1]
+      X <- cbind(X1,X2)
+      X <- X[-nrow(X),]
+      
+    } else {
+      
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del día anterior al que deseamos predecir la contaminación
+      X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
+      
+      Y <- X[-1,"maximo"]
+      X <- X[-nrow(X),]
+      
+    }
+    
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
+    sample<-c(1:(0.8*nrow(X)))
+        
+    X_train <- X[sample,]
+    Y_train <- Y[sample]
+        
+    X_test <- X[-sample,]
+    Y_test <- Y[-sample]
+    
+  } else if (predictores == 3) {
+    
+    # Se utilizan los datos de medidas de contaminación, las medidas climatológicas y el calendario laboral
+    
+    if (pred_clima==TRUE) {
+      
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del mismo día en que deseamos predecir la contaminación (uso de predicción del clima)
+      X1 <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
+      X2 <- datos[datos$contaminante==c&datos$estacion==estacion,c("prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia","laborable")]
+      
+      Y <- X1[-1]
+      X <- cbind(X1,X2)
+      X <- X[-nrow(X),]
+      
+    } else {
+      
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del día anterior al que deseamos predecir la contaminación
+      X1 <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
+      X2 <- datos[datos$contaminante==c&datos$estacion==estacion,"laborable"]
+      
+      Y <- X1[-1,"maximo"]
+      X1 <- X1[-nrow(X1),]
+      X2 <- X2[-1]
+      X <- cbind(X1,X2)
+      
+    }
+    
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
+    sample<-c(1:(0.8*nrow(X)))
+    
+    X_train <- X[sample,]
+    Y_train <- Y[sample]
+        
+    X_test <- X[-sample,]
+    Y_test <- Y[-sample]
+    
+  }
+  
+  # Almacenamos los sets de datos en una lista (facilita el return de la función)
+  returnList <- list("X_train" = X_train, "Y_train" = Y_train, "X_test" = X_test, "Y_test" = Y_test)
+  
+  # Normalizamos los datos
+  returnList <- normalizar(returnList)
+  
+  return(returnList)
+  
+}
+```
+
+- Revisamos la correlación entre la media diaria de contaminación y el resto de atributos climatológicos y si el día es laboral o no
+
+```{r correlación, message=FALSE, warning=FALSE}
+
+j=1
+
+for (i in levels(datos$contaminante)) {
+  print(paste0("Correlación de atributos para el contamiante: ", contaminante[j]))
+  print(cor(datos[datos$contaminante==i,28:37])[,"media"])
+  cat("\n")
+  j=j+1
+}
+
+```
+
+## 2. Caracterización del clima de Madrid
+
+El clima de la ciudad de Madrid según la clasificación climática de Köppen es clima templado con verano seco y caluroso (Csa).
+
+A continuación se muestran los valores climatológicos medios para cada estación del año según los datos del periodo 2013-2018.
+
+```{r Caracterización_estaciones, message=FALSE, warning=FALSE}
+
+# primavera (20/03 -20/06)
+cat("Climatología en los meses de primavera:\n")
+print(colMeans(datos[format(datos$fecha,"%m-%d")>='03-20'&format(datos$fecha,"%m-%d")<='06-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+# verano (21/06 - 22/09)
+cat("\nclimatología en los meses de verano:\n")
+print(colMeans(datos[format(datos$fecha,"%m-%d")>='06-21'&format(datos$fecha,"%m-%d")<='09-22',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+# otoño (23/09 - 20/12)
+cat("\nClimatología en los meses de otoño:\n")
+print(colMeans(datos[format(datos$fecha,"%m-%d")>='09-23'&format(datos$fecha,"%m-%d")<='12-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+# invierno (21/12 - 19/03)
+cat("\nClimatología en los meses de invierno:\n")
+print(colMeans(datos[(format(datos$fecha,"%m-%d")>='12-21'&format(datos$fecha,"%m-%d")<='12-31') | (format(datos$fecha,"%m-%d")>='01-01' & format(datos$fecha,"%m-%d")<='03-19'),c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+
+```
+
+A continuación se muestra un gráfico temporal con los datos de temperatura y precipitaciones a lo largo del año 2018:
+
+```{r caracterización_precipitaciones, message=FALSE, warning=FALSE}
+
+# Gráficos
+library(ggplot2)
+
+# Precipitaciones y temperatura
+ggplot(data = datos, aes(fecha, prec)) + geom_line(aes(y = prec, colour = "prec")) + geom_line(aes(y = tmed, colour = "tmed")) + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2018-01-01','2018-12-31'))) + ggtitle("Precipitaciones (mm) y temperatura (ºC) en 2018")
+
+```
+
+Como se puede observar en el gráfico, el clima de Madrid a lo largo del año se caracteriza por una sequia estival que se corresponde con las temperaturas más elevadas.
+
+A continuación se muestra el nivel de lluvias acumulado (mm) durante los meses del año 2018:
+
+```{r caracterización_precipitaciones_acumulado, message=FALSE, warning=FALSE}
+
+# Precipitaciones acumulado
+ggplot(data = clima, aes(x = as.Date(cut(clima$fecha, breaks = "month")), y = prec)) + stat_summary(fun.y = cumsum, geom = "bar") + scale_x_date(date_breaks = "1 month", date_labels = "%m", limits=as.Date(c('2017-12-01','2018-12-31'))) + xlab("Fecha") + ylab("Prestaciones")
+
+```
+
+Durante el año 2018, el mes de mayor acumulación de lluvias fue marzo seguido de abril y mayo.
+
+## 3. Modelo de predicción de la calidad del aire de Madrid
+
+```{r cargar_y_preparar_datos, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Este bloque carga el fichero "datos.csv" con los datos ya preprocesados y las funciones preparar_datos y normalizar
+
+# Establecemos el nombre de las columnas
+columnas <- c("estacion","fecha","contaminante","hora1","hora2","hora3","hora4","hora5","hora6","hora7","hora8","hora9","hora10","hora11","hora12","hora13","hora14","hora15","hora16","hora17","hora18","hora19","hora20","hora21","hora22","hora23","hora24","media","maximo","prec","presMax","presMin","tmax","tmed","tmin","racha","velMedia","laborable")
+
+# Leemos el fichero "datos.csv" y almacenamos los datos en el data frame datos
+datos <- read.csv(file = "datos.csv", header = TRUE, sep = ",", col.names = columnas)
+
+# Establecemos el tipo de dato de cada columna
+datos$estacion <- as.factor(datos$estacion)
+datos$fecha<-as.Date(datos$fecha, format("%Y-%m-%d"))
+datos$contaminante <- as.factor(datos$contaminante)
+
+preparar_datos <- function(c, estacion, predictores, pred_clima) {
+  
+  # c: Código del contaminante seleccionado
+  # estacion: Código de la estación a analizar
+  # predictores: 1 sólo medidas de contaminación, 2 medidas de contaminación y climatología, 3 medidas de contaminación, climatología y calendario laboral
+  # pred_clima: TRUE: Se usan como variables predictoras los datos del clima del día en que se quiere predecir la contaminación (uso de predicción del clima)
+  # pred_clima: FALSE: Se usan como variables predictoras los datos del clima del día anterior al que se quiere predecir la contaminación
+  
+  if (is.null(c)) stop("El parámetro c (código de contaminante) es obligatorio.")
+  if (is.null(estacion)) stop("El parámetro estación es obligatorio.")
+  if (is.null(predictores)) stop("El parámetro preditores es obligatorio.")
+  if (is.null(pred_clima)) stop("El parámetro pred_clima es obligatorio")
+  
+  if (predictores == 1) {
+    
+    # Sólo se utilizan los datos de medidas de contaminación para el contaminante c
+    
+    # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i] la siguiente medición a X[i]
+    X <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
+    
+    Y <- X[-1]
+    X <- X[-length(X)]
+    
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
+    sample<-c(1:(0.8*length(X)))
+        
+    X_train <- X[sample]
+    Y_train <- Y[sample]
+        
+    X_test <- X[-sample]
+    Y_test <- Y[-sample]
+    
+  } else if (predictores == 2) {
+    
+    # Se utilizan los datos de medidas de contaminación y las medidas climatológicas
+    
+    if (pred_clima==TRUE) {
+
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del mismo día en que deseamos predecir la contaminación (uso de predicción del clima)
+      X1 <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
+      X2 <- datos[datos$contaminante==c&datos$estacion==estacion,c("prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
+      
+      Y <- X1[-1]
+      X <- cbind(X1,X2)
+      X <- X[-nrow(X),]
+      
+    } else {
+      
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del día anterior al que deseamos predecir la contaminación
+      X <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
+      
+      Y <- X[-1,"maximo"]
+      X <- X[-nrow(X),]
+      
+    }
+    
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
+    sample<-c(1:(0.8*nrow(X)))
+        
+    X_train <- X[sample,]
+    Y_train <- Y[sample]
+        
+    X_test <- X[-sample,]
+    Y_test <- Y[-sample]
+    
+  } else if (predictores == 3) {
+    
+    # Se utilizan los datos de medidas de contaminación, las medidas climatológicas y el calendario laboral
+    
+    if (pred_clima==TRUE) {
+      
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del mismo día en que deseamos predecir la contaminación (uso de predicción del clima)
+      X1 <- datos[datos$contaminante==c&datos$estacion==estacion,"maximo"]
+      X2 <- datos[datos$contaminante==c&datos$estacion==estacion,c("prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia","laborable")]
+      
+      Y <- X1[-1]
+      X <- cbind(X1,X2)
+      X <- X[-nrow(X),]
+      
+    } else {
+      
+      # Almacenamos las observaciones del contaminante c como series temporales en X e Y, siendo Y[i,] la siguiente medición a X[i,]
+      # Almacenamos en X las mediciones climatológicas del día anterior al que deseamos predecir la contaminación
+      X1 <- datos[datos$contaminante==c&datos$estacion==estacion,c("maximo","prec","presMax","presMin","tmax","tmed","tmin", "racha","velMedia")]
+      X2 <- datos[datos$contaminante==c&datos$estacion==estacion,"laborable"]
+      
+      Y <- X1[-1,"maximo"]
+      X1 <- X1[-nrow(X1),]
+      X2 <- X2[-1]
+      X <- cbind(X1,X2)
+      
+    }
+    
+    # Separamos X e Y en sets de entrenamiento y test (80% y 20% respectivamente)
+    sample<-c(1:(0.8*nrow(X)))
+    
+    X_train <- X[sample,]
+    Y_train <- Y[sample]
+        
+    X_test <- X[-sample,]
+    Y_test <- Y[-sample]
+    
+  }
+  
+  # Almacenamos los sets de datos en una lista (facilita el return de la función)
+  returnList <- list("X_train" = X_train, "Y_train" = Y_train, "X_test" = X_test, "Y_test" = Y_test)
+  
+  # Normalizamos los datos
+  returnList <- normalizar(returnList)
+  
+  return(returnList)
+  
+}
+
+normalizar <- function(dataList) {
+  
+  # Normalizamos los datos entre 0 y 1
+  
+  if (typeof(dataList$X_train) == "list") {
+    # X_train y X_test contienen varios predictores
+    
+    # Calculamos los máximos y mínimos de cada predictor
+    dataList$maxXTrain = sapply(dataList$X_train, max)
+    dataList$minXTrain = sapply(dataList$X_train, min)
+    dataList$maxXTest = sapply(dataList$X_test, max)
+    dataList$minXTest = sapply(dataList$X_test, min)
+    
+    # Normalizamos cada columna
+    for (i in 1:length(dataList$X_train)) {
+      
+      dataList$X_train[,i] <- (dataList$X_train[,i] - dataList$minXTrain[i]) / (dataList$maxXTrain[i] - dataList$minXTrain[i])
+      dataList$X_test[,i] <- (dataList$X_test[,i] - dataList$minXTest[i]) / (dataList$maxXTest[i] - dataList$minXTest[i])
+      
+    }
+    
+  } else {
+    
+    # X_train y X_test contienen un único predictor
+    
+    # Calculamos el máximo y el mínimo del predictor
+    dataList$maxXTrain = max(dataList$X_train)
+    dataList$minXTrain = min(dataList$X_train)
+    dataList$maxXTest = max(dataList$X_test)
+    dataList$minXTest = min(dataList$X_test)
+    
+    # Normalizamos los datos
+    dataList$X_train <- (dataList$X_train - dataList$minXTrain) / (dataList$maxXTrain - dataList$minXTrain)
+    dataList$X_test <- (dataList$X_test - dataList$minXTest) / (dataList$maxXTest - dataList$minXTest)
+    
+  }
+
+  # Calculamos el máximo y el mínimo de la variable objetivo
+  dataList$maxYTrain = max(dataList$Y_train)
+  dataList$minYTrain = min(dataList$Y_train)
+  dataList$maxYTest = max(dataList$Y_test)
+  dataList$minYTest = min(dataList$Y_test)
+  
+  # Normalizamos los datos
+  dataList$Y_train <- (dataList$Y_train - dataList$minYTrain) / (dataList$maxYTrain - dataList$minYTrain)
+  dataList$Y_test <- (dataList$Y_test - dataList$minYTest) / (dataList$maxYTest - dataList$minYTest)
+  
+  return(dataList)
+  
+}
+
+```
+
+Funciones genéricas de entrenamiento y predicción para los modelos MLP, LSTM y CNN. Además de funciones de evaluación y comparación de resultados para todos los modelos:
+
+```{r entrenar_modelo, message=FALSE, warning=FALSE}
+
+entrenar_modelo <- function(tipo, modelo, batch_size, epochs) {
+  
+  if(typeof(X_train)=="list") {
+    # X_train contiene varios predictores
+    
+    # Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
+    num = batch_size*as.integer(nrow(X_train)/batch_size)
+  
+    # Convertimos el data frame X_train en una matriz
+    X_train <- data.matrix(X_train[1:num,]) #Si X_train contiene varias columnas
+    
+    if (tipo == "lstm" | tipo == "cnn") {
+      
+      # Redimensionamos la matrix X_train
+  		dim(X_train) <- c(dim(X_train)[1],1,dim(X_train)[2])
+  		
+    }
+  
+  } else {
+    # X_train contiene un único predictor
+  
+    # Truncamos las observaciones de X_train e Y_train para coincidir con el batch_size
+    num = batch_size*as.integer(length(X_train)/batch_size)
+  
+    # Convertimos el data frame X_train en una matriz
+    X_train <- data.matrix(X_train[1:num]) #Si X_train es un Array
+  
+    if (tipo == "lstm" | tipo == "cnn") {
+      
+      # Redimensionamos la matrix X_train
+      dim(X_train) <- c(dim(X_train)[1],1,dim(X_train)[2])
+      
+    }
+
+  }
+  
+  # Entrenamos el modelo
+  modelo %>% fit(X_train, Y_train[1:num], batch_size = batch_size, epochs = epochs, verbose = 1, shuffle = FALSE)
+  
+}
+
+```
+
+```{r predicciones_modelo, message=FALSE, warning=FALSE}
+
+predicciones_modelo <- function(tipo, modelo, batch_size) {
+  
+  if(typeof(X_test)=="list") {
+    # X_test contiene varios predictores
+    
+    # Truncamos las observaciones de X_test e Y_test para coincidir con el batch_size
+    num = as.integer(nrow(X_test)/batch_size)*batch_size
+  
+    # Convertimos el data frame X_train en una matriz
+    X_test <- data.matrix(X_test[1:num,]) #Si X_test contiene varias columnas
+    
+    if (tipo == "lstm" | tipo == "cnn") {
+      
+      # Redimensionamos la matrix X_train
+      dim(X_test) <- c(dim(X_test)[1],1,dim(X_test)[2])
+      
+    }
+  
+  } else {
+    # X_test contiene un único predictor
+  
+    # Truncamos las observaciones de X_test e Y_test para coincidir con el batch_size
+    num = as.integer(length(X_test)/batch_size)*batch_size
+  
+    # Convertimos el data frame X_test en una matriz
+    X_test <- data.matrix(X_test[1:num]) #Si X_test es un Array
+    
+    if (tipo == "lstm" | tipo == "cnn") {
+      
+      # Redimensionamos la matrix X_test
+      dim(X_test) <- c(dim(X_test)[1],1,dim(X_test)[2])
+      
+    }
+  }
+  
+  # Usamos el modelo para realizar las predicciones
+  Y_pred <- modelo %>% predict(X_test, batch_size = batch_size)
+  
+  return(Y_pred)
+  
+}
+
+```
+
+```{r evaluar_modelo, message=FALSE, warning=FALSE}
+
+evaluar_modelo <- function() {
+  
+  # Evaluamos el modelo calculando la raíz cuadrada del error cuadrático medio (RMSE)
+  return(sqrt(mean((Y_pred - Y_test[1:length(Y_pred)])^2)))
+  
+}
+
+```
+
+```{r mostrar_prediccion, message=FALSE, warning=FALSE}
+
+comparar_prediccion<-function(Y_test,Y_pred, titulo) {
+  
+  # Importamos la librería ggplot2
+  library(ggplot2)
+  
+  # Creamos un data frame con los datos reales y las predicciones
+  resultado <- cbind(Y_test[1:length(Y_pred)],Y_pred)
+  resultado <- as.data.frame(resultado)
+  colnames(resultado) <- c("Y_test","Y_pred")
+  
+  # Creamos un vector X con para el eje de abscisas
+  X <- c(1:length(Y_pred))
+  
+  # Mostramos los datos reales y las predicciones con un gráfico de líneas
+  p <- ggplot() + geom_line(data = resultado, aes(x=X, y=resultado$Y_test, colour = "Y_test"), size = 1) + geom_line(data = resultado, aes(x=X, y=resultado$Y_pred, colour = "Y_pred"), size = 1) + xlab("Tiempo") + ylab("Contaminación") + ggtitle(titulo)
+  
+  print(p)
+  
+}
+
+```
+
+### 3.1. Modelo basado en MLP (Multilayer perceptron)
+
+```{r crear_modelo_mlp, message=FALSE, warning=FALSE}
+
+crear_modelo_mlp <- function(batch_size, n, units, activation) {
+  
+  # Importamos la librería keras para crear el modelo
+  library(keras)
+  
+  # Destroys the current TF graph and creates a new one. Useful to avoid clutter from old models / layers.
+  k_clear_session()
+  
+  # Creamos un modelo secuencial como una pila lineal de capas
+  modelo <- keras_model_sequential()
+  
+  # Añadimos las capas al modelo
+  modelo %>%
+    layer_dense(units = units, batch_input_shape = c(batch_size, n), activation = activation) %>% 
+    layer_dense(units = units, activation = activation) %>% 
+    layer_dense(units = units, activation = activation) %>% 
+    layer_dense(units = 1)
+  
+  # Compilamos el modelo
+  modelo %>% compile(loss = 'mean_squared_error', optimizer = 'adam')
+  
+  return(modelo)
+
+}
+
+```
+
+```{r benchmark_modelo_mlp, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Este bloque realiza un benchmark del modelo MLP para encontrar los mejores hiperparámetros en base al RMSE
+
+tipo = "mlp" # Modelo tipo MLP
+c = 8 # Dióxido de nitrógeno
+estacion = 28079004 # Plaza de España
+predictores = c(1,2,3) # Numero de variables predictoras a considerar
+pred_clima = FALSE # Uso de predicción del clima
+activation_valores = c("softmax","relu","tanh") # Activadores a evaluar
+batch_size_valores = c(1,7,30) # batch_sizes a evaluar
+units_valores = c(1,8,16,32,64) # Numero de units a evaluar
+epochs_valores = c(1,5,10) # Número de épocas a evaluar
+
+resultados <- data.frame()
+
+for (k in predictores) {
+    
+  # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+  n = switch(k,1,9,10)
+  
+  for (activation in activation_valores) {
+    for (batch_size in batch_size_valores) {
+      for (units in units_valores) {
+        for (epochs in epochs_valores) {
+          
+          cat("Evaluando modelo MLP con c:",c,"predictores:",k,"activation:",activation,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
+          
+          # Preparamos los datos de entrenamiento y prueba
+          returnList <- preparar_datos(c, estacion, k, pred_clima)
+          
+          X_train <- returnList$X_train
+          Y_train <- returnList$Y_train
+          X_test <- returnList$X_test
+          Y_test <- returnList$Y_test
+          
+          # Creamos el modelo MLP  
+          modelo <- crear_modelo_mlp(batch_size, n, units, activation)
+          
+          # Entrenamos el modelo con X_train e Y_train (variables globales)
+          entrenar_modelo(tipo, modelo, batch_size, epochs)
+          
+          # Predecimos los resultados para X_test (variable global)
+          Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
+          
+          # Evaluamos el modelo calculando el RMSE
+          rmse = evaluar_modelo()
+          
+          cat("RMSE:",rmse,"\n")
+          
+          # Revertimos la normalización de los datos de test
+          Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+          Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+          
+          # Comparamos los datos reales y las predicciones con un gráfico de líneas 
+          titulo = paste("Modelo MLP, predictores:",k,"\nactivation:",activation,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\nRMSE:",rmse)
+          comparar_prediccion(Y_test,Y_pred,titulo)
+          
+          # Almacenamos los resultados de los hiperparámetros evaluados en el fichero "mlp_resultados_bench.csv"
+          newRow <- data.frame(c=c, k=k, activation=activation,batch_size=batch_size, units=units, epochs=epochs, rmse=rmse)
+          resultados <- rbind(resultados, newRow)
+          rm(newRow)
+          write.csv2(resultados, file = "mlp_resultados_bench.csv", row.names= FALSE, col.names = TRUE)
+          
+        }
+      }
+    }
+  }
+}
+
+```
+
+```{r modelo_mlp, message=FALSE, warning=FALSE}
+
+# Establecemos los hiperparámetros del modelo MLP
+tipo = "mlp" # Modelo tipo MLP
+cod_contaminante = 8 # Dióxido de nitrógeno
+cod_estacion = 28079004 # Plaza de España
+predictores = 3 # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
+pred_clima = FALSE # Uso de predicción del clima
+activation = "relu"
+n = switch(predictores,1,9,10) # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+batch_size = 7
+units = 128
+epochs = 10
+        
+cat("Predicción mediante modelo MLP.\n Contaminante:",cod_contaminante,"predictores:",predictores,"activation:",activation,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
+
+# Preparamos los datos de entrenamiento y prueba
+returnList <- preparar_datos(cod_contaminante, cod_estacion, predictores, pred_clima)
+
+X_train <- returnList$X_train
+Y_train <- returnList$Y_train
+X_test <- returnList$X_test
+Y_test <- returnList$Y_test
+
+# Creamos el modelo MLP  
+modelo <- crear_modelo_mlp(batch_size, n, units, activation)
+
+# Entrenamos el modelo con X_train e Y_train (variables globales)
+entrenar_modelo(tipo, modelo, batch_size, epochs)
+
+# Predecimos los resultados para X_test (variable global)
+Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
+
+# Evaluamos el modelo calculando el RMSE
+rmse = evaluar_modelo()
+
+cat("RMSE:",rmse,"\n")
+
+# Revertimos la normalización de los datos de test
+Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+
+# Comparamos los datos reales y las predicciones con un gráfico de líneas 
+titulo = paste("Modelo MLP, predictores:",predictores,"\nactivation:",activation,"batch size:",batch_size,"units:",units,"epochs:",epochs,"\nRMSE:",rmse)
+comparar_prediccion(Y_test,Y_pred,titulo)
+
+```
+
+### 3.2. Modelo basado en LSTM (Long Short-Term Memory)
+
+```{r crear_modelo_lstm, message=FALSE, warning=FALSE}
+
+crear_modelo_lstm <- function(batch_size, n, units, activation) {
+  
+  # Importamos la librería keras para crear el modelo
+  library(keras)
+  
+  # Destroys the current TF graph and creates a new one. Useful to avoid clutter from old models / layers.
+  k_clear_session()
+  
+  # Creamos un modelo secuencial como una pila lineal de capas
+  modelo <- keras_model_sequential()
+  
+  # Añadimos las capas al modelo
+  modelo %>%
+    layer_lstm(units = units, batch_input_shape = c(batch_size, 1, n), 
+               return_sequences = TRUE, stateful=TRUE, activation = activation) %>% 
+    layer_lstm(units = units, return_sequences = TRUE, stateful=TRUE, activation = activation) %>% 
+    layer_lstm(units = units, return_sequences = FALSE, stateful=TRUE, activation = activation) %>% 
+    layer_dense(units = 1)
+  
+  # Compilamos el modelo
+  modelo %>% compile(loss = 'mean_squared_error', optimizer = 'RMSprop')
+  
+  return(modelo)
+
+}
+
+```
+
+```{r benchmark_modelo_lstm, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Este bloque realiza un benchmark del modelo LSTM para encontrar los mejores hiperparámetros en base al RMSE
+
+tipo = "lstm" # Modelo tipo LSTM
+c = 8 # Dióxido de nitrógeno
+estacion = 28079004 # Plaza de España
+predictores = c(1,2,3) # Numero de variables predictoras a considerar
+pred_clima = FALSE # Uso de predicción del clima
+activation_valores = c("softmax","relu","tanh") # Activadores a evaluar
+batch_size_valores = c(1,7,30) # batch_sizes a evaluar
+units_valores = c(1,8,16,32,64) # Numero de units a evaluar
+epochs_valores = c(1,5,10) # Número de épocas a evaluar
+
+resultados <- data.frame()
+
+for (k in predictores) {
+    
+  # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+  n = switch(k,1,9,10)
+  
+  for (activation in activation_valores) {
+    for (batch_size in batch_size_valores) {
+      for (units in units_valores) {
+        for (epochs in epochs_valores) {
+          
+          cat("Evaluando modelo LSTM con c:",c,"predictores:",k,"activation:",activation,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
+          
+          # Preparamos los datos de entrenamiento y prueba
+          returnList <- preparar_datos(c, estacion, k, pred_clima)
+          
+          X_train <- returnList$X_train
+          Y_train <- returnList$Y_train
+          X_test <- returnList$X_test
+          Y_test <- returnList$Y_test
+          
+          # Creamos el modelo LSTM  
+          modelo <- crear_modelo_lstm(batch_size, n, units, activation)
+          
+          # Entrenamos el modelo con X_train e Y_train (variables globales)
+          entrenar_modelo(tipo, modelo, batch_size, epochs)
+          
+          # Predecimos los resultados para X_test (variable global)
+          Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
+          
+          # Evaluamos el modelo calculando el RMSE
+          rmse = evaluar_modelo()
+          
+          cat("RMSE:",rmse,"\n")
+          
+          # Revertimos la normalización de los datos de test
+          Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+          Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+          
+          # Comparamos los datos reales y las predicciones con un gráfico de líneas 
+          titulo = paste("Modelo LSTM, predictores:",k,"\nactivation",activation,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\nRMSE:",rmse)
+          comparar_prediccion(Y_test,Y_pred,titulo)
+          
+          # Almacenamos los resultados de los hiperparámetros evaluados en el fichero "lstm_resultados_bench.csv"
+          newRow <- data.frame(c=c, k=k, activation=activation, batch_size=batch_size, units=units, epochs=epochs, rmse=rmse)
+          resultados <- rbind(resultados, newRow)
+          rm(newRow)
+          write.csv2(resultados, file = "lstm_resultados_bench.csv", row.names= FALSE, col.names = TRUE)
+          
+        }
+      }
+    }
+  }
+}
+
+```
+
+```{r modelo_lstm, message=FALSE, warning=FALSE}
+
+# Establecemos los hiperparámetros del modelo LSTM
+tipo = "lstm" # Modelo tipo LSTM
+cod_contaminante = 8 # Dióxido de nitrógeno
+cod_estacion = 28079004 # Plaza de España
+predictores = 3 # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
+pred_clima = FALSE # Uso de predicción del clima
+activation = "tanh"
+n = switch(predictores,1,9,10) # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+batch_size = 30
+units = 32
+epochs = 10
+        
+cat("Predicción mediante modelo LSTM.\n Contaminante:",cod_contaminante,"predictores:",predictores,"activation:",activation,"batch_size:",batch_size,"units:",units,"epochs:",epochs,"\n")
+
+# Preparamos los datos de entrenamiento y prueba
+returnList <- preparar_datos(cod_contaminante, cod_estacion, predictores, pred_clima)
+
+X_train <- returnList$X_train
+Y_train <- returnList$Y_train
+X_test <- returnList$X_test
+Y_test <- returnList$Y_test
+
+# Creamos el modelo LSTM  
+modelo <- crear_modelo_lstm(batch_size, n, units, activation)
+
+# Entrenamos el modelo con X_train e Y_train (variables globales)
+entrenar_modelo(tipo, modelo, batch_size, epochs)
+
+# Predecimos los resultados para X_test (variable global)
+Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
+
+# Evaluamos el modelo calculando el RMSE
+rmse = evaluar_modelo()
+
+cat("RMSE:",rmse,"\n")
+
+# Revertimos la normalización de los datos de test
+Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+
+# Comparamos los datos reales y las predicciones con un gráfico de líneas 
+titulo = paste("Modelo LSTM, predictores:",predictores,"\nactivation:",activation,"batch size:",batch_size,"units:",units,"epochs:",epochs,"\nRMSE:",rmse)
+comparar_prediccion(Y_test,Y_pred,titulo)
+
+```
+
+### 3.3. Modelo basado en CNN (Convolutional Neural Network)
+
+```{r crear_modelo_cnn, message=FALSE, warning=FALSE}
+
+crear_modelo_cnn <- function(batch_size, n, filters, activation) {
+  
+  # Importamos la librería keras para crear el modelo
+  library(keras)
+  
+  # Destroys the current TF graph and creates a new one. Useful to avoid clutter from old models / layers.
+  k_clear_session()
+  
+  # Creamos un modelo secuencial como una pila lineal de capas
+  modelo <- keras_model_sequential()
+  
+  # Añadimos las capas al modelo
+  modelo %>%
+    layer_conv_1d(filters = filters, kernel_size = 1, activation = activation, batch_input_shape = c(batch_size, 1, n)) %>%
+    layer_conv_1d(filters = filters, kernel_size = 1, activation = activation) %>% 
+    layer_global_max_pooling_1d() %>%
+    layer_dense(units = 1)
+  
+  # Compilamos el modelo
+  modelo %>% compile(loss = 'mean_squared_error', optimizer = 'RMSprop')
+  
+  return(modelo)
+
+}
+
+```
+
+```{r benchmark_modelo_cnn, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Este bloque realiza un benchmark del modelo CNN para encontrar los mejores hiperparámetros en base al RMSE
+
+tipo = "cnn" # Modelo tipo CNN
+c = 8 # Dióxido de nitrógeno
+estacion = 28079004 # Plaza de España
+predictores = c(1,2,3) # Numero de variables predictoras a considerar
+pred_clima = FALSE # Uso de predicción del clima
+activation_valores = c("softmax","relu","tanh") # Activadores a evaluar
+batch_size_valores = c(1,7,30) # batch_sizes a evaluar
+filters_valores = c(1,8,16,32,64) # Numero de filters a evaluar
+epochs_valores = c(1,5,10) # Número de épocas a evaluar
+
+resultados <- data.frame()
+
+for (k in predictores) {
+    
+  # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+  n = switch(k,1,9,10)
+  
+  for (activation in activation_valores) {
+    for (batch_size in batch_size_valores) {
+      for (filters in filters_valores) {
+        for (epochs in epochs_valores) {
+          
+          cat("Evaluando modelo CNN con c:",c,"predictores:",k,"activation:",activation,"batch_size:",batch_size,"filters:",filters,"epochs:",epochs,"\n")
+          
+          # Preparamos los datos de entrenamiento y prueba
+          returnList <- preparar_datos(c, estacion, k, pred_clima)
+          
+          X_train <- returnList$X_train
+          Y_train <- returnList$Y_train
+          X_test <- returnList$X_test
+          Y_test <- returnList$Y_test
+          
+          # Creamos el modelo CNN  
+          modelo <- crear_modelo_cnn(batch_size, n, filters, activation)
+          
+          # Entrenamos el modelo con X_train e Y_train (variables globales)
+          entrenar_modelo(tipo, modelo, batch_size, epochs)
+          
+          # Predecimos los resultados para X_test (variable global)
+          Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
+          
+          # Evaluamos el modelo calculando el RMSE
+          rmse = evaluar_modelo()
+          
+          cat("RMSE:",rmse,"\n")
+          
+          # Revertimos la normalización de los datos de test
+          Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+          Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+          
+          # Comparamos los datos reales y las predicciones con un gráfico de líneas 
+          titulo = paste("Modelo CNN, predictores:",k,"\nactivation",activation,"batch_size:",batch_size,"filters:",filters,"epochs:",epochs,"\nRMSE:",rmse)
+          comparar_prediccion(Y_test,Y_pred,titulo)
+          
+          # Almacenamos los resultados de los hiperparámetros evaluados en el fichero "lstm_resultados_bench.csv"
+          newRow <- data.frame(c=c, k=k, activation=activation, batch_size=batch_size, filters=filters, epochs=epochs, rmse=rmse)
+          resultados <- rbind(resultados, newRow)
+          rm(newRow)
+          write.csv2(resultados, file = "cnn_resultados_bench.csv", row.names= FALSE, col.names = TRUE)
+          
+        }
+      }
+    }
+  }
+}
+
+```
+
+```{r modelo_cnn, message=FALSE, warning=FALSE}
+
+# Establecemos los hiperparámetros del modelo CNN
+tipo = "cnn" # Modelo tipo LSTM
+cod_contaminante = 8 # Dióxido de nitrógeno
+cod_estacion = 28079004 # Plaza de España
+predictores = 3 # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
+pred_clima = FALSE # Uso de predicción del clima
+activation = "softmax"
+n = switch(predictores,1,9,10) # n contiene el numero de predictores en cada observacion (n=1 si k=1, n=9 si k=2, n=10 si k=3)
+batch_size = 1
+filters = 128
+epochs = 10
+        
+cat("Predicción mediante modelo CNN\n Contaminante:",cod_contaminante,"predictores:",predictores,"activation:",activation,"batch_size:",batch_size,"filters:",filters,"epochs:",epochs,"\n")
+
+# Preparamos los datos de entrenamiento y prueba
+returnList <- preparar_datos(cod_contaminante, cod_estacion, predictores, pred_clima)
+
+X_train <- returnList$X_train
+Y_train <- returnList$Y_train
+X_test <- returnList$X_test
+Y_test <- returnList$Y_test
+
+# Creamos el modelo CNN  
+modelo <- crear_modelo_cnn(batch_size, n, filters, activation)
+
+# Entrenamos el modelo con X_train e Y_train (variables globales)
+entrenar_modelo(tipo, modelo, batch_size, epochs)
+
+# Predecimos los resultados para X_test (variable global)
+Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
+
+# Evaluamos el modelo calculando el RMSE
+rmse = evaluar_modelo()
+
+cat("RMSE:",rmse,"\n")
+
+# Revertimos la normalización de los datos de test
+Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+
+# Comparamos los datos reales y las predicciones con un gráfico de líneas 
+titulo = paste("Modelo CNN, predictores:",predictores,"\nactivation:",activation,"batch size:",batch_size,"filters:",filters,"epochs:",epochs,"\nRMSE:",rmse)
+comparar_prediccion(Y_test,Y_pred,titulo)
+
+```
+
+### 3.4. Modelo basado en SVM (Support Vector Machines)
+
+```{r benchmark_modelo_svm, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+
+# Este bloque realiza un benchmark del modelo SVM para encontrar los mejores hiperparámetros en base al RMSE
+
+# Cargamos la librería e1071
+library(e1071)
+
+# Establecemos los hiperparámetros del modelo SVM
+c = 8 # Dióxido de nitrógeno
+cod_estacion = 28079004 # Plaza de España
+predictores = c(1,2,3) # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
+pred_clima = FALSE # Uso de predicción del clima
+type_valores = c("eps-regression", "nu-regression")
+kernel_valores = c("linear","polynomial","radial","sigmoid")
+
+resultados <- data.frame(stringsAsFactors = FALSE)
+        
+for (k in predictores) {
+  for (type in type_valores) {
+    for (kernel in kernel_valores) {
+      
+      cat("Predicción mediante modelo SVM\n Contaminante:",cod_contaminante,"predictores:",k,"type:",type,"kernel:",kernel,"\n")
+
+      # Preparamos los datos de entrenamiento y prueba
+      returnList <- preparar_datos(cod_contaminante, cod_estacion, k, pred_clima)
+      
+      X_train <- returnList$X_train
+      Y_train <- returnList$Y_train
+      X_test <- returnList$X_test
+      Y_test <- returnList$Y_test
+      
+      # Creamos el modelo SVM con X_train e Y_train (variables globales)
+      modelo <- svm(x = X_train, y = Y_train, type = type, kernel = kernel)
+      
+      # Predecimos los resultados para X_test (variable global)
+      Y_pred <- predict(modelo, X_test)
+
+      # Evaluamos el modelo calculando el RMSE
+      rmse = evaluar_modelo()
+      
+      cat("RMSE:",rmse,"\n")
+      
+      # Revertimos la normalización de los datos de test
+      Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+      Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+      
+      # Comparamos los datos reales y las predicciones con un gráfico de líneas 
+      titulo = paste("Modelo SVM, predictores:",k,"\ntype:",type,"kernel:",kernel,"RMSE:",rmse)
+      comparar_prediccion(Y_test,Y_pred,titulo)
+      
+      # Almacenamos los resultados de los hiperparámetros evaluados en el fichero "svm_resultados_bench.csv"
+      newRow <- data.frame(c=c, k=k, type = type, kernel = kernel, rmse = rmse)
+      resultados <- rbind(resultados, newRow)
+      rm(newRow)
+      write.csv2(resultados, file = "svm_resultados_bench.csv", row.names= FALSE, col.names = TRUE)
+      
+    }
+  }
+}
+
+```
+
+```{r modelo_svm, message=FALSE, warning=FALSE}
+
+# Cargamos la librería e1071
+library(e1071)
+
+# Establecemos los hiperparámetros del modelo SVM
+cod_contaminante = 8 # Dióxido de nitrógeno
+cod_estacion = 28079004 # Plaza de España
+predictores = 3 # Como variables predictoras utilizamos las medidas de contaminación, las medidas climatológicas y el calendario laboral
+pred_clima = FALSE # Uso de predicción del clima
+type = "nu-regression"
+kernel = "radial"
+        
+cat("Predicción mediante modelo SVM\n Contaminante:",cod_contaminante,"predictores:",predictores,"type:",type,"kernel:",kernel,"\n")
+
+# Preparamos los datos de entrenamiento y prueba
+returnList <- preparar_datos(cod_contaminante, cod_estacion, predictores, pred_clima)
+
+X_train <- returnList$X_train
+Y_train <- returnList$Y_train
+X_test <- returnList$X_test
+Y_test <- returnList$Y_test
+
+# Creamos el modelo SVM con X_train e Y_train (variables globales)
+modelo <- svm(x = X_train, y = Y_train, type = type, kernel = kernel)
+
+# Predecimos los resultados para X_test (variable global)
+Y_pred <- predict(modelo, X_test)
+
+# Evaluamos el modelo calculando el RMSE
+rmse = evaluar_modelo()
+
+cat("RMSE:",rmse,"\n")
+
+# Revertimos la normalización de los datos de test
+Y_pred <- (Y_pred * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+Y_test <- (Y_test * (returnList$maxYTest - returnList$minYTest)) + returnList$minYTest
+
+# Access just the obj values without names
+Y_pred <- data.matrix(Y_pred)
+
+# Comparamos los datos reales y las predicciones con un gráfico de líneas 
+titulo = paste("Modelo SVM, predictores:",predictores,"\ntype:",type,"kernel:",kernel,"RMSE:",rmse)
+comparar_prediccion(Y_test,Y_pred,titulo)
+
+```
+
+
+
+
 

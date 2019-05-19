@@ -632,14 +632,6 @@ Durante el año 2018, el mes de mayor acumulación de lluvias fue marzo seguido de
 
 ### 1.5. Modelo de predicción de la calidad del aire de Madrid
 
-En los modelos de series temporales, los datos se recogen de manera secuencial durante el paso del tiempo.
-
-Estos modelos son de tipo supervisado, por lo que necesitan de una variable objetivo Y y un predictor X.
-
-Para conseguir esto, es necesario transformar la serie temporal (array de observaciones) en una nueva serie en la que se agrupen k observaciones consecutivas desde el momento t-k hasta t de forma que podamos entrenar al modelo con las k-1 observaciones anteriores a t como predictor X y la observación de t como variable objetivo Y.
-
-Por lo tanto, para nuestro modelo elegiremos un contaminante a predecir, tomaremos sus observaciones y las almacenaremos como una serie temporal. A continuación estableceremos el número de k de observaciones que agruparemos, por ejemplo 7 días y entrenaremos el modelo con las k-1 primeras observaciones como predictor X y la observación k como variable objetivo Y.
-
 ```{r cargar_y_preparar_datos, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
 # Este bloque carga el fichero "datos.csv" con los datos ya preprocesados y las funciones preparar_datos y normalizar
@@ -1298,7 +1290,7 @@ predictores = c(1,2,3) # Numero de variables predictoras a considerar
 pred_clima = FALSE # Uso de predicción del clima
 activation_valores = c("softmax","relu","tanh") # Activadores a evaluar
 batch_size_valores = c(1,7,30) # batch_sizes a evaluar
-filters_valores = c(1,8,16,32,64) # Numero de units a evaluar
+filters_valores = c(1,8,16,32,64) # Numero de filters a evaluar
 epochs_valores = c(1,5,10) # Número de épocas a evaluar
 
 resultados <- data.frame()
@@ -1412,6 +1404,9 @@ comparar_prediccion(Y_test,Y_pred,titulo)
 ```{r benchmark_modelo_svm, eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
 
 # Este bloque realiza un benchmark del modelo SVM para encontrar los mejores hiperparámetros en base al RMSE
+
+# Cargamos la librería e1071
+library(e1071)
 
 # Establecemos los hiperparámetros del modelo SVM
 c = 8 # Dióxido de nitrógeno

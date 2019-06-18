@@ -1076,7 +1076,11 @@ Y_test <- returnList$Y_test
 modelo <- crear_modelo_mlp(batch_size, n, units, activation)
 
 # Entrenamos el modelo con X_train e Y_train (variables globales)
+start_time <- Sys.time()
 entrenar_modelo(tipo, modelo, batch_size, epochs)
+end_time <- Sys.time()
+timeMLP = end_time - start_time
+cat("Tiempo total de entrenamiento:",timeMLP,"\n")
 
 # Predecimos los resultados para X_test (variable global)
 Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
@@ -1228,7 +1232,11 @@ Y_test <- returnList$Y_test
 modelo <- crear_modelo_lstm(batch_size, n, units, activation)
 
 # Entrenamos el modelo con X_train e Y_train (variables globales)
+start_time <- Sys.time()
 entrenar_modelo(tipo, modelo, batch_size, epochs)
+end_time <- Sys.time()
+timeLSTM = end_time - start_time
+cat("Tiempo total de entrenamiento:",timeLSTM,"\n")
 
 # Predecimos los resultados para X_test (variable global)
 Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
@@ -1379,7 +1387,11 @@ Y_test <- returnList$Y_test
 modelo <- crear_modelo_cnn(batch_size, n, filters, activation)
 
 # Entrenamos el modelo con X_train e Y_train (variables globales)
+start_time <- Sys.time()
 entrenar_modelo(tipo, modelo, batch_size, epochs)
+end_time <- Sys.time()
+timeCNN = end_time - start_time
+cat("Tiempo total de entrenamiento:",timeCNN,"\n")
 
 # Predecimos los resultados para X_test (variable global)
 Y_pred <- predicciones_modelo(tipo, modelo, batch_size)
@@ -1487,7 +1499,11 @@ X_test <- returnList$X_test
 Y_test <- returnList$Y_test
 
 # Creamos el modelo SVM con X_train e Y_train (variables globales)
+start_time <- Sys.time()
 modelo <- svm(x = X_train, y = Y_train, type = type, kernel = kernel)
+end_time <- Sys.time()
+timeSVM = end_time - start_time
+cat("Tiempo total de entrenamiento:",timeSVM,"\n")
 
 # Predecimos los resultados para X_test (variable global)
 Y_pred <- predict(modelo, X_test)

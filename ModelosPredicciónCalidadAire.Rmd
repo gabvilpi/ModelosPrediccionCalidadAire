@@ -589,19 +589,19 @@ A continuación se muestran los valores climatológicos medios para cada estación 
 
 # primavera (20/03 -20/06)
 cat("Climatología en los meses de primavera:\n")
-print(colMeans(datos[format(datos$fecha,"%m-%d")>='03-20'&format(datos$fecha,"%m-%d")<='06-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+print(colMeans(datos[datos$estacion==28079004&format(datos$fecha,"%m-%d")>='03-20'&format(datos$fecha,"%m-%d")<='06-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
 
 # verano (21/06 - 22/09)
 cat("\nclimatología en los meses de verano:\n")
-print(colMeans(datos[format(datos$fecha,"%m-%d")>='06-21'&format(datos$fecha,"%m-%d")<='09-22',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+print(colMeans(datos[datos$estacion==28079004&format(datos$fecha,"%m-%d")>='06-21'&format(datos$fecha,"%m-%d")<='09-22',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
 
 # otoño (23/09 - 20/12)
 cat("\nClimatología en los meses de otoño:\n")
-print(colMeans(datos[format(datos$fecha,"%m-%d")>='09-23'&format(datos$fecha,"%m-%d")<='12-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+print(colMeans(datos[datos$estacion==28079004&format(datos$fecha,"%m-%d")>='09-23'&format(datos$fecha,"%m-%d")<='12-20',c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
 
 # invierno (21/12 - 19/03)
 cat("\nClimatología en los meses de invierno:\n")
-print(colMeans(datos[(format(datos$fecha,"%m-%d")>='12-21'&format(datos$fecha,"%m-%d")<='12-31') | (format(datos$fecha,"%m-%d")>='01-01' & format(datos$fecha,"%m-%d")<='03-19'),c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
+print(colMeans(datos[datos$estacion==28079004&(format(datos$fecha,"%m-%d")>='12-21'&format(datos$fecha,"%m-%d")<='12-31') | (format(datos$fecha,"%m-%d")>='01-01' & format(datos$fecha,"%m-%d")<='03-19'),c("prec","presMax","presMin","racha","tmax","tmed","tmin","velMedia")], na.rm = TRUE))
 
 ```
 
